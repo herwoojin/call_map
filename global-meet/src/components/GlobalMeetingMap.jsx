@@ -593,7 +593,7 @@ export default function GlobalMeetingMap() {
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-slate-50 text-slate-600 font-medium">
                 <tr>
-                  <th className="p-3 border-b border-slate-100">핀 제목</th>
+                  <th className="p-3 border-b border-slate-100">핀제목(정보기입)</th>
                   <th className="p-3 border-b border-slate-100">작성자</th>
                   <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
