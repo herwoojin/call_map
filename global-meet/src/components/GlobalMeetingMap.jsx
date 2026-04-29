@@ -55,10 +55,20 @@ function sharedLocationIcon(name, isSelf) {
 const NOMINATIM_HEADERS = { 'Accept': 'application/json', 'Accept-Language': 'ko,en;q=0.8,zh;q=0.6' };
 
 async function geocodeAddress(addr) {
-  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addr)}`, { headers: NOMINATIM_HEADERS });
+  // 괄호 안의 내용(예: (해도동))은 Nominatim 검색을 방해하므로 제거합니다.
+  const cleanAddr = addr.replace(/\s*\(.*?\)\s*/g, '').trim();
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(cleanAddr)}`, { headers: NOMINATIM_HEADERS });
   const data = await res.json();
-  if (!data.length) return null;
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: data[0].display_name };
+  
+  if (!data.length) {
+    // 매칭되는 좌표가 없으면 시/군/구 수준까지만 잘라내어 2차 시도를 합니다.
+    const fallbackAddr = cleanAddr.split(' ').slice(0, 3).join(' ');
+    const fallbackRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(fallbackAddr)}`, { headers: NOMINATIM_HEADERS });
+    const fallbackData = await fallbackRes.json();
+    if (!fallbackData.length) return null;
+    return { lat: parseFloat(fallbackData[0].lat), lng: parseFloat(fallbackData[0].lon), display: addr };
+  }
+  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), display: addr };
 }
 
 async function reverseGeocode(lat, lng) {
