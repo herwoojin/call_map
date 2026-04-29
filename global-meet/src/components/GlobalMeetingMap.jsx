@@ -8,7 +8,7 @@ import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, serv
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Crosshair, Navigation, X, List, Plus, Trash2, Loader2, Share2, Eye, EyeOff, Settings as SettingsIcon } from 'lucide-react';
+import { Search, MapPin, Crosshair, Navigation, X, List, Plus, Trash2, Loader2, Share2, Eye, EyeOff, Settings as SettingsIcon, Edit2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GlobalChat from './GlobalChat';
 
@@ -139,6 +139,21 @@ export default function GlobalMeetingMap() {
   
   const [tableFilter, setTableFilter] = useState('');
   const [editInfo, setEditInfo] = useState({});
+  
+  const [editingPinId, setEditingPinId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+
+  const handleUpdatePinTitle = async (pinId) => {
+    try {
+      await updateDoc(doc(db, 'globalPins', pinId), {
+        title: editTitle || '제목 없음'
+      });
+      setEditingPinId(null);
+      setEditTitle('');
+    } catch (error) {
+      console.error("Error updating pin title:", error);
+    }
+  };
 
   const handleUpdateAdditionalInfo = async (pinId, info) => {
     try {
@@ -610,12 +625,22 @@ export default function GlobalMeetingMap() {
                 }).map(pin => (
                   <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-3 font-medium text-slate-900">
-                      <button 
-                        onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
-                        className="hover:text-indigo-600 hover:underline text-left font-semibold"
-                      >
-                        {pin.title || '제목 없음'}
-                      </button>
+                      {editingPinId === pin.id ? (
+                        <input 
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          className="w-full px-2 py-1 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          autoFocus
+                        />
+                      ) : (
+                        <button 
+                          onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
+                          className="hover:text-indigo-600 hover:underline text-left font-semibold"
+                        >
+                          {pin.title || '제목 없음'}
+                        </button>
+                      )}
                     </td>
                     <td className="p-3 text-slate-500">
                       {pin.createdByName || pin.createdBy}
@@ -625,21 +650,51 @@ export default function GlobalMeetingMap() {
                     </td>
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                          title="지도에서 보기"
-                        >
-                          <MapPin className="w-4 h-4" />
-                        </button>
-                        {pin.createdBy === myEmail && (
-                          <button 
-                            onClick={() => handleDeletePin(pin.id)}
-                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        {editingPinId === pin.id ? (
+                          <>
+                            <button 
+                              onClick={() => handleUpdatePinTitle(pin.id)}
+                              className="p-1.5 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                              title="저장"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => { setEditingPinId(null); setEditTitle(''); }}
+                              className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-md transition-colors"
+                              title="취소"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button 
+                              onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                              title="지도에서 보기"
+                            >
+                              <MapPin className="w-4 h-4" />
+                            </button>
+                            {pin.createdBy === myEmail && (
+                              <>
+                                <button 
+                                  onClick={() => { setEditingPinId(pin.id); setEditTitle(pin.title || ''); }}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                                  title="제목 수정"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeletePin(pin.id)}
+                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                  title="삭제"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
