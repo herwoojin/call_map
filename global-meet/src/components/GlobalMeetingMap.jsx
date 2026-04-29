@@ -127,18 +127,19 @@ export default function GlobalMeetingMap() {
   const startY = useRef(0);
   const startHeight = useRef(0);
 
-  const handleResizeStart = (e) => {
-    isResizing.current = true;
-    startY.current = e.clientY;
-    startHeight.current = mapHeight;
-    document.addEventListener('mousemove', handleResizeMove);
-    document.addEventListener('mouseup', handleResizeEnd);
-    document.body.style.userSelect = 'none'; // 드래그 중 텍스트 선택 방지
-  };
-
   const handleResizeMove = useCallback((e) => {
     if (!isResizing.current) return;
-    const dy = e.clientY - startY.current;
+    const clientY = e.clientY;
+    const dy = clientY - startY.current;
+    const newHeight = startHeight.current + dy;
+    setMapHeight(Math.max(200, Math.min(newHeight, window.innerHeight * 0.85)));
+  }, [mapHeight]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isResizing.current) return;
+    if (e.cancelable) e.preventDefault(); // 모바일 스크롤 방지
+    const clientY = e.touches[0].clientY;
+    const dy = clientY - startY.current;
     const newHeight = startHeight.current + dy;
     setMapHeight(Math.max(200, Math.min(newHeight, window.innerHeight * 0.85)));
   }, [mapHeight]);
@@ -147,8 +148,28 @@ export default function GlobalMeetingMap() {
     isResizing.current = false;
     document.removeEventListener('mousemove', handleResizeMove);
     document.removeEventListener('mouseup', handleResizeEnd);
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleResizeEnd);
     document.body.style.userSelect = '';
-  }, [handleResizeMove]);
+    document.body.style.overscrollBehavior = '';
+  }, [handleResizeMove, handleTouchMove]);
+
+  const handleResizeStart = (e) => {
+    isResizing.current = true;
+    startY.current = e.clientY || (e.touches && e.touches[0].clientY);
+    startHeight.current = mapHeight;
+    
+    if (e.type === 'touchstart') {
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleResizeEnd);
+    } else {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+    }
+    
+    document.body.style.userSelect = 'none'; 
+    document.body.style.overscrollBehavior = 'none';
+  };
 
   // Subscribe to pins
   useEffect(() => {
@@ -486,7 +507,7 @@ export default function GlobalMeetingMap() {
           </div>
           </div>
 
-          <div id="mapResizeHandle" className="map-resize-handle" title="드래그하여 지도 높이 조절 (더블클릭 = 초기화)" role="separator" aria-orientation="horizontal" tabIndex="0" onMouseDown={handleResizeStart} onDoubleClick={() => setMapHeight(500)}>
+          <div id="mapResizeHandle" className="map-resize-handle" title="드래그하여 지도 높이 조절 (더블클릭 = 초기화)" role="separator" aria-orientation="horizontal" tabIndex="0" onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} onDoubleClick={() => setMapHeight(500)}>
             <span className="mrh-grip"></span>
             <span className="mrh-label">↕ 높이 조절</span>
           </div>
@@ -524,7 +545,7 @@ export default function GlobalMeetingMap() {
         )}
 
         {/* Chat */}
-        <GlobalChat />
+        {/* <GlobalChat /> */}
       </main>
     </div>
   );
