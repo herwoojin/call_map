@@ -143,6 +143,24 @@ export default function GlobalMeetingMap() {
   const [editingPinId, setEditingPinId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
 
+  // Password Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('globalMapAuthenticated') === 'true';
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === '2525') {
+      localStorage.setItem('globalMapAuthenticated', 'true');
+      setIsAuthenticated(true);
+    } else {
+      setPasswordError('비밀번호가 일치하지 않습니다.');
+      setPasswordInput('');
+    }
+  };
+
   const handleUpdatePinTitle = async (pinId) => {
     try {
       await updateDoc(doc(db, 'globalPins', pinId), {
@@ -365,6 +383,44 @@ export default function GlobalMeetingMap() {
   useEffect(() => {
     return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
   }, []);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 transform transition-all">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
+              <MapPin className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800">글로벌 미팅 지도</h2>
+            <p className="text-sm text-slate-500 mt-2 text-center">지도에 접근하기 위해<br/>비밀번호를 입력해주세요.</p>
+          </div>
+          
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+            <div>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }}
+                placeholder="비밀번호"
+                autoFocus
+                className={`w-full px-4 py-3.5 border ${passwordError ? 'border-red-400 bg-red-50/30' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-center tracking-[0.5em] text-xl font-medium`}
+              />
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-2 text-center font-medium animate-pulse">{passwordError}</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg"
+            >
+              확인
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
