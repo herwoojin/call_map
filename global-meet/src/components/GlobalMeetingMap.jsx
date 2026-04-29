@@ -596,7 +596,6 @@ export default function GlobalMeetingMap() {
                   <th className="p-3 border-b border-slate-100">핀 제목</th>
                   <th className="p-3 border-b border-slate-100">작성자</th>
                   <th className="p-3 border-b border-slate-100">주소</th>
-                  <th className="p-3 border-b border-slate-100">추가 정보</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
                 </tr>
               </thead>
@@ -606,8 +605,7 @@ export default function GlobalMeetingMap() {
                   return (
                     (pin.title || '').toLowerCase().includes(searchLower) ||
                     (pin.address || '').toLowerCase().includes(searchLower) ||
-                    (pin.createdByName || pin.createdBy || '').toLowerCase().includes(searchLower) ||
-                    (pin.additionalInfo || '').toLowerCase().includes(searchLower)
+                    (pin.createdByName || pin.createdBy || '').toLowerCase().includes(searchLower)
                   );
                 }).map(pin => (
                   <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
@@ -624,23 +622,6 @@ export default function GlobalMeetingMap() {
                     </td>
                     <td className="p-3 text-slate-500 max-w-xs truncate" title={pin.address}>
                       {(pin.address || '').split(' ').slice(0, 2).join(' ')}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1.5">
-                        <input 
-                          type="text" 
-                          value={editInfo[pin.id] !== undefined ? editInfo[pin.id] : (pin.additionalInfo || '')} 
-                          onChange={(e) => setEditInfo({ ...editInfo, [pin.id]: e.target.value })}
-                          placeholder="메모 추가..."
-                          className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
-                        />
-                        <button 
-                          onClick={() => handleUpdateAdditionalInfo(pin.id, editInfo[pin.id] !== undefined ? editInfo[pin.id] : (pin.additionalInfo || ''))}
-                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition-colors shrink-0"
-                        >
-                          저장
-                        </button>
-                      </div>
                     </td>
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -666,7 +647,7 @@ export default function GlobalMeetingMap() {
                 ))}
                 {pins.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="p-6 text-center text-slate-400 text-sm">
+                    <td colSpan="4" className="p-6 text-center text-slate-400 text-sm">
                       등록된 핀이 없습니다.
                     </td>
                   </tr>
