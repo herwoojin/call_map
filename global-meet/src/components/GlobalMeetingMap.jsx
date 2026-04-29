@@ -289,7 +289,7 @@ export default function GlobalMeetingMap() {
     try {
       await addDoc(collection(db, 'globalPins'), {
         lat: pendingPin.lat, lng: pendingPin.lng,
-        address: `${pendingPin.lat.toFixed(5)}, ${pendingPin.lng.toFixed(5)}`,
+        address: pendingPin.address,
         resolvedAddress: pendingPin.address,
         title: pinTitle.trim() || pendingPin.address.split(',')[0],
         createdBy: myEmail, createdByName: currentUser.displayName || '',
@@ -606,10 +606,10 @@ export default function GlobalMeetingMap() {
           {/* Table Container */}
           <div className="overflow-x-auto border border-slate-100 rounded-lg">
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50 text-slate-600 font-medium">
+              <thead className="bg-slate-50 text-slate-600 font-medium whitespace-nowrap">
                 <tr>
                   <th className="p-3 border-b border-slate-100">핀제목(정보기입)</th>
-                  <th className="p-3 border-b border-slate-100">작성자</th>
+                  <th className="p-3 border-b border-slate-100 hidden sm:table-cell">작성자</th>
                   <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
                 </tr>
@@ -624,7 +624,7 @@ export default function GlobalMeetingMap() {
                   );
                 }).map(pin => (
                   <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-3 font-medium text-slate-900">
+                    <td className="p-3 font-medium text-slate-900 min-w-[140px]">
                       {editingPinId === pin.id ? (
                         <input 
                           type="text"
@@ -636,20 +636,20 @@ export default function GlobalMeetingMap() {
                       ) : (
                         <button 
                           onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
-                          className="hover:text-indigo-600 hover:underline text-left font-semibold"
+                          className="hover:text-indigo-600 hover:underline text-left font-semibold break-words"
                         >
                           {pin.title || '제목 없음'}
                         </button>
                       )}
                     </td>
-                    <td className="p-3 text-slate-500">
+                    <td className="p-3 text-slate-500 hidden sm:table-cell whitespace-nowrap">
                       {pin.createdByName || pin.createdBy}
                     </td>
-                    <td className="p-3 text-slate-500 max-w-xs truncate" title={pin.address}>
+                    <td className="p-3 text-slate-500 max-w-[120px] sm:max-w-xs truncate" title={pin.address}>
                       {(pin.address || '').split(' ').slice(0, 2).join(' ')}
                     </td>
-                    <td className="p-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="p-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1 sm:gap-2">
                         {editingPinId === pin.id ? (
                           <>
                             <button 
