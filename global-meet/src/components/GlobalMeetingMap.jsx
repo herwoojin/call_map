@@ -8,7 +8,7 @@ import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, serv
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { Search, MapPin, Crosshair, Navigation, X, List, Plus, Trash2, Loader2, Share2, Eye, EyeOff, Settings as SettingsIcon, Edit2, Check } from 'lucide-react';
+import { Search, MapPin, Crosshair, Navigation, X, List, Plus, Trash2, Loader2, Share2, Eye, EyeOff, Settings as SettingsIcon, Edit2, Check, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GlobalChat from './GlobalChat';
 
@@ -171,6 +171,44 @@ export default function GlobalMeetingMap() {
     } catch (error) {
       console.error("Error updating pin title:", error);
     }
+  };
+
+  const handleExportExcel = () => {
+    const filteredPins = pins.filter(pin => {
+      const searchLower = tableFilter.toLowerCase();
+      return (
+        (pin.title || '').toLowerCase().includes(searchLower) ||
+        (pin.address || '').toLowerCase().includes(searchLower) ||
+        (pin.createdByName || pin.createdBy || '').toLowerCase().includes(searchLower)
+      );
+    });
+
+    const headers = ['핀제목(정보기입)', '작성자', '주소', '위도', '경도', '생성일자'];
+    const csvRows = [headers.join(',')];
+
+    filteredPins.forEach(pin => {
+      const title = `"${(pin.title || '제목 없음').replace(/"/g, '""')}"`;
+      const creator = `"${(pin.createdByName || pin.createdBy || '').replace(/"/g, '""')}"`;
+      const addr = `"${(pin.address || '').replace(/"/g, '""')}"`;
+      const lat = pin.lat;
+      const lng = pin.lng;
+      const date = pin.createdAt && pin.createdAt.seconds 
+        ? `"${new Date(pin.createdAt.seconds * 1000).toLocaleString()}"` 
+        : '""';
+      
+      csvRows.push([title, creator, addr, lat, lng, date].join(','));
+    });
+
+    const csvContent = '\uFEFF' + csvRows.join('\n'); // UTF-8 BOM for Excel
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `글로벌_미팅_핀목록_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleUpdateAdditionalInfo = async (pinId, info) => {
@@ -646,16 +684,26 @@ export default function GlobalMeetingMap() {
               <span>{t('map.allPins', '전체 핀 목록')} ({pins.length})</span>
             </h3>
             
-            {/* Filtering input */}
-            <div className="w-full sm:w-64 relative">
-              <input 
-                type="text" 
-                value={tableFilter}
-                onChange={e => setTableFilter(e.target.value)}
-                placeholder="목록 검색..."
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
-              />
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            {/* Filtering and Export */}
+            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+              <div className="w-full sm:w-64 relative">
+                <input 
+                  type="text" 
+                  value={tableFilter}
+                  onChange={e => setTableFilter(e.target.value)}
+                  placeholder="목록 검색..."
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+                />
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              </div>
+              <button 
+                onClick={handleExportExcel}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg text-sm font-medium transition-colors border border-emerald-200"
+                title="엑셀(CSV) 다운로드"
+              >
+                <Download className="w-4 h-4" />
+                <span>엑셀 저장</span>
+              </button>
             </div>
           </div>
 
