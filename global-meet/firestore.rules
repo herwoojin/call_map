@@ -37,7 +37,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.token.email;
       allow update: if isSignedIn() && (
         resource.data.createdBy == request.auth.token.email ||
-        onlyAffects(['additionalInfo'])
+        onlyAffects(['additionalInfo', 'title'])
       );
       allow delete: if isSignedIn()
         && resource.data.createdBy == request.auth.token.email;
