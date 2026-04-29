@@ -4,7 +4,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../resize.css'; // Add resize CSS
-import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -136,6 +136,18 @@ export default function GlobalMeetingMap() {
   const isResizing = useRef(false);
   const startY = useRef(0);
   const startHeight = useRef(0);
+  
+  const [tableFilter, setTableFilter] = useState('');
+
+  const handleUpdateAdditionalInfo = async (pinId, info) => {
+    try {
+      await updateDoc(doc(db, 'globalPins', pinId), {
+        additionalInfo: info
+      });
+    } catch (error) {
+      console.error("Error updating additional info:", error);
+    }
+  };
 
   const handleResizeMove = useCallback((e) => {
     if (!isResizing.current) return;
@@ -396,10 +408,6 @@ export default function GlobalMeetingMap() {
             className="map-control-btn flex items-center gap-1.5 text-sm text-slate-600">
             <Search className="w-4 h-4" /> {t('map.search', '검색')}
           </button>
-          <button onClick={() => setShowPinsList(true)}
-            className="map-control-btn flex items-center gap-1.5 text-sm text-slate-600">
-            <List className="w-4 h-4" /> {t('map.pinCount', '핀')} ({pins.length})
-          </button>
         </div>
 
         {showSearch && (
@@ -558,36 +566,106 @@ export default function GlobalMeetingMap() {
           </div>
         </div>
 
-        {/* Pins list modal */}
-        {showPinsList && (
-          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowPinsList(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-semibold text-lg">{t('map.allPins', '전체 핀 목록')} ({pins.length})</h3>
-                <button onClick={() => setShowPinsList(false)}><X className="w-5 h-5 text-slate-400" /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto divide-y custom-scrollbar">
-                {pins.map(pin => (
-                  <div key={pin.id} onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); setShowPinsList(false); }}
-                    className="px-4 py-3 hover:bg-indigo-50 cursor-pointer transition-colors flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{pin.title || pin.address}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{pin.createdByName || pin.createdBy}</p>
-                    </div>
-                    {pin.createdBy === myEmail && (
-                      <button onClick={(e) => { e.stopPropagation(); handleDeletePin(pin.id); }}
-                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title={t('map.deletePin', '삭제')}>
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {pins.length === 0 && <p className="p-6 text-center text-slate-400 text-sm">{t('map.noPins', '등록된 핀이 없습니다')}</p>}
-              </div>
+        {/* Pins List Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mt-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-slate-100 mb-4 gap-3">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <List className="w-5 h-5 text-indigo-500" />
+              <span>{t('map.allPins', '전체 핀 목록')} ({pins.length})</span>
+            </h3>
+            
+            {/* Filtering input */}
+            <div className="w-full sm:w-64 relative">
+              <input 
+                type="text" 
+                value={tableFilter}
+                onChange={e => setTableFilter(e.target.value)}
+                placeholder="목록 검색..."
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
+              />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             </div>
           </div>
-        )}
+
+          {/* Table Container */}
+          <div className="overflow-x-auto border border-slate-100 rounded-lg">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-slate-50 text-slate-600 font-medium">
+                <tr>
+                  <th className="p-3 border-b border-slate-100">핀 제목</th>
+                  <th className="p-3 border-b border-slate-100">주소</th>
+                  <th className="p-3 border-b border-slate-100">작성자</th>
+                  <th className="p-3 border-b border-slate-100">추가 정보</th>
+                  <th className="p-3 border-b border-slate-100 text-center">기능</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {pins.filter(pin => {
+                  const searchLower = tableFilter.toLowerCase();
+                  return (
+                    (pin.title || '').toLowerCase().includes(searchLower) ||
+                    (pin.address || '').toLowerCase().includes(searchLower) ||
+                    (pin.createdByName || pin.createdBy || '').toLowerCase().includes(searchLower) ||
+                    (pin.additionalInfo || '').toLowerCase().includes(searchLower)
+                  );
+                }).map(pin => (
+                  <tr key={pin.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 font-medium text-slate-900">
+                      <button 
+                        onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
+                        className="hover:text-indigo-600 hover:underline text-left font-semibold"
+                      >
+                        {pin.title || '제목 없음'}
+                      </button>
+                    </td>
+                    <td className="p-3 text-slate-500 max-w-xs truncate" title={pin.address}>
+                      {pin.address}
+                    </td>
+                    <td className="p-3 text-slate-500">
+                      {pin.createdByName || pin.createdBy}
+                    </td>
+                    <td className="p-3">
+                      <input 
+                        type="text" 
+                        defaultValue={pin.additionalInfo || ''} 
+                        onBlur={(e) => handleUpdateAdditionalInfo(pin.id, e.target.value)}
+                        placeholder="메모 추가..."
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+                      />
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                          title="지도에서 보기"
+                        >
+                          <MapPin className="w-4 h-4" />
+                        </button>
+                        {pin.createdBy === myEmail && (
+                          <button 
+                            onClick={() => handleDeletePin(pin.id)}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pins.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="p-6 text-center text-slate-400 text-sm">
+                      등록된 핀이 없습니다.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* Chat */}
         {/* <GlobalChat /> */}
