@@ -138,11 +138,12 @@ export default function GlobalMeetingMap() {
   const startHeight = useRef(0);
   
   const [tableFilter, setTableFilter] = useState('');
+  const [editInfo, setEditInfo] = useState({});
 
   const handleUpdateAdditionalInfo = async (pinId, info) => {
     try {
       await updateDoc(doc(db, 'globalPins', pinId), {
-        additionalInfo: info
+        additionalInfo: info || ''
       });
     } catch (error) {
       console.error("Error updating additional info:", error);
@@ -593,8 +594,8 @@ export default function GlobalMeetingMap() {
               <thead className="bg-slate-50 text-slate-600 font-medium">
                 <tr>
                   <th className="p-3 border-b border-slate-100">핀 제목</th>
-                  <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100">작성자</th>
+                  <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100">추가 정보</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
                 </tr>
@@ -618,20 +619,28 @@ export default function GlobalMeetingMap() {
                         {pin.title || '제목 없음'}
                       </button>
                     </td>
-                    <td className="p-3 text-slate-500 max-w-xs truncate" title={pin.address}>
-                      {pin.address}
-                    </td>
                     <td className="p-3 text-slate-500">
                       {pin.createdByName || pin.createdBy}
                     </td>
+                    <td className="p-3 text-slate-500 max-w-xs truncate" title={pin.address}>
+                      {(pin.address || '').split(' ').slice(0, 2).join(' ')}
+                    </td>
                     <td className="p-3">
-                      <input 
-                        type="text" 
-                        defaultValue={pin.additionalInfo || ''} 
-                        onBlur={(e) => handleUpdateAdditionalInfo(pin.id, e.target.value)}
-                        placeholder="메모 추가..."
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <input 
+                          type="text" 
+                          value={editInfo[pin.id] !== undefined ? editInfo[pin.id] : (pin.additionalInfo || '')} 
+                          onChange={(e) => setEditInfo({ ...editInfo, [pin.id]: e.target.value })}
+                          placeholder="메모 추가..."
+                          className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+                        />
+                        <button 
+                          onClick={() => handleUpdateAdditionalInfo(pin.id, editInfo[pin.id] !== undefined ? editInfo[pin.id] : (pin.additionalInfo || ''))}
+                          className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md transition-colors shrink-0"
+                        >
+                          저장
+                        </button>
+                      </div>
                     </td>
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-2">
