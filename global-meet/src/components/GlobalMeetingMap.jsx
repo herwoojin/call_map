@@ -171,6 +171,31 @@ export default function GlobalMeetingMap() {
     document.body.style.overscrollBehavior = 'none';
   };
 
+  const openPostcode = () => {
+    if (!window.daum || !window.daum.Postcode) {
+      alert(t('map.postcodeNotLoaded', '주소 검색 서비스를 불러오지 못했습니다.'));
+      return;
+    }
+    new window.daum.Postcode({
+      oncomplete: function(data) {
+        let fullAddress = data.address;
+        let extraAddress = '';
+
+        if (data.addressType === 'R') {
+          if (data.bname !== '') {
+            extraAddress += data.bname;
+          }
+          if (data.buildingName !== '') {
+            extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
+          }
+          fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+        }
+
+        setAddress(fullAddress);
+      }
+    }).open();
+  };
+
   // Subscribe to pins
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'globalPins'), snap => {
@@ -334,9 +359,19 @@ export default function GlobalMeetingMap() {
             <input id="pin-title-input" value={pinTitle} onChange={e => setPinTitle(e.target.value)}
               placeholder={t('map.pinTitlePlaceholder', '핀 제목 (선택)')}
               className="flex-[0.4] px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-            <input id="address-input" value={address} onChange={e => setAddress(e.target.value)}
-              placeholder={t('map.addressPlaceholder', '주소를 입력하세요')}
-              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+            <div className="flex-1 relative flex items-center">
+              <input id="address-input" value={address} onChange={e => setAddress(e.target.value)}
+                placeholder={t('map.addressPlaceholder', '주소를 입력하세요')}
+                className="w-full px-3 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+              <button 
+                type="button"
+                onClick={openPostcode}
+                className="absolute right-2 p-1.5 text-lg hover:bg-slate-100 rounded-md btn-ghost gc-postcode transition-colors"
+                title="도로명·지번 상세 주소 검색 (행정안전부)"
+              >
+                📫
+              </button>
+            </div>
             <button type="submit" disabled={loading} id="add-pin-btn"
               className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-1.5">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
