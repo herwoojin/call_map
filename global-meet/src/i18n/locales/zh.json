@@ -1,0 +1,56 @@
+{
+  "login": {
+    "subtitle": "连接、分享、会面 — 世界任何地方",
+    "feature1": "位置标记",
+    "feature2": "实时聊天",
+    "feature3": "全球连接",
+    "button": "使用 Google 登录",
+    "notice": "使用 Google 账号轻松开始"
+  },
+  "map": {
+    "pinTitlePlaceholder": "标记标题（可选）",
+    "addressPlaceholder": "输入地址",
+    "addPin": "添加标记",
+    "search": "搜索",
+    "pinCount": "标记",
+    "searchPlaceholder": "搜索地点...",
+    "searchBtn": "搜索",
+    "confirmPin": "在此位置添加标记？",
+    "confirm": "添加",
+    "cancel": "取消",
+    "deletePin": "删除",
+    "allPins": "所有标记",
+    "noPins": "暂无标记",
+    "myLocation": "我的位置",
+    "startSharing": "分享位置",
+    "stopSharing": "停止分享",
+    "sharingUsers": "正在分享位置",
+    "addressNotFound": "找不到地址",
+    "locationError": "无法获取位置"
+  },
+  "chat": {
+    "selectRoom": "选择聊天室...",
+    "members": "成员",
+    "autoVoiceOn": "自动语音 ON",
+    "autoVoiceOff": "自动语音 OFF",
+    "newRoom": "新聊天室",
+    "memberList": "成员列表",
+    "me": "我",
+    "deleteRoom": "删除聊天室",
+    "leaveRoom": "退出",
+    "selectRoomPrompt": "选择聊天室或创建新的",
+    "noMessages": "暂无消息",
+    "inputPlaceholder": "输入消息...",
+    "confirmDelete": "确定删除此聊天室？",
+    "createRoom": "创建新聊天室",
+    "roomName": "聊天室名称",
+    "roomNamePlaceholder": "输入聊天室名称",
+    "inviteMembers": "邀请成员",
+    "searchUserPlaceholder": "通过邮箱或姓名搜索",
+    "create": "创建"
+  },
+  "common": {
+    "cancel": "取消",
+    "loading": "加载中..."
+  }
+}

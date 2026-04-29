@@ -1,0 +1,56 @@
+{
+  "login": {
+    "subtitle": "Connect, Share, Meet — Anywhere in the world",
+    "feature1": "Location Pins",
+    "feature2": "Real-time Chat",
+    "feature3": "Global Connection",
+    "button": "Sign in with Google",
+    "notice": "Get started easily with your Google account"
+  },
+  "map": {
+    "pinTitlePlaceholder": "Pin title (optional)",
+    "addressPlaceholder": "Enter an address",
+    "addPin": "Add Pin",
+    "search": "Search",
+    "pinCount": "Pins",
+    "searchPlaceholder": "Search places...",
+    "searchBtn": "Search",
+    "confirmPin": "Add a pin at this location?",
+    "confirm": "Add",
+    "cancel": "Cancel",
+    "deletePin": "Delete",
+    "allPins": "All Pins",
+    "noPins": "No pins registered",
+    "myLocation": "My Location",
+    "startSharing": "Share Location",
+    "stopSharing": "Stop Sharing",
+    "sharingUsers": "Sharing Location",
+    "addressNotFound": "Address not found",
+    "locationError": "Unable to get location"
+  },
+  "chat": {
+    "selectRoom": "Select a room...",
+    "members": "Members",
+    "autoVoiceOn": "Auto Voice ON",
+    "autoVoiceOff": "Auto Voice OFF",
+    "newRoom": "New Room",
+    "memberList": "Member List",
+    "me": "Me",
+    "deleteRoom": "Delete Room",
+    "leaveRoom": "Leave",
+    "selectRoomPrompt": "Select a room or create a new one",
+    "noMessages": "No messages",
+    "inputPlaceholder": "Type a message...",
+    "confirmDelete": "Delete this room?",
+    "createRoom": "Create New Room",
+    "roomName": "Room Name",
+    "roomNamePlaceholder": "Enter room name",
+    "inviteMembers": "Invite Members",
+    "searchUserPlaceholder": "Search by email or name",
+    "create": "Create"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "loading": "Loading..."
+  }
+}

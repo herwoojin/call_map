@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function myUid()      { return request.auth.uid; }
+    function myEmail()    { return request.auth.token.email.lower(); }
+
+    function onlyAffects(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function roomDoc(roomId) {
+      return get(/databases/$(database)/documents/globalChatRooms/$(roomId));
+    }
+    function isRoomMember(roomId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/globalChatRooms/$(roomId))
+        && myEmail() in roomDoc(roomId).data.members;
+    }
+    function isRoomOwner(roomId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/globalChatRooms/$(roomId))
+        && roomDoc(roomId).data.createdBy == myEmail();
+    }
+
+    match /users/{userId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() && myUid() == userId;
+      allow update: if isSignedIn() && myUid() == userId;
+      allow delete: if false;
+    }
+
+    match /globalPins/{pinId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.token.email;
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && resource.data.createdBy == request.auth.token.email;
+    }
+
+    match /liveLocations/{userId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() && myUid() == userId;
+      allow update: if isSignedIn() && myUid() == userId;
+      allow delete: if isSignedIn() && myUid() == userId;
+    }
+
+    match /globalChatRooms/{roomId} {
+      allow read: if isSignedIn() && myEmail() in resource.data.members;
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == myEmail()
+        && myEmail() in request.resource.data.members;
+      allow update: if isSignedIn() && (
+        resource.data.createdBy == myEmail()
+        || (
+          myEmail() in resource.data.members
+          && onlyAffects(['members'])
+          && !(myEmail() in request.resource.data.members)
+        )
+      );
+      allow delete: if isSignedIn()
+        && resource.data.createdBy == myEmail();
+
+      match /messages/{messageId} {
+        allow read:   if isRoomMember(roomId);
+        allow create: if isRoomMember(roomId)
+          && request.resource.data.senderEmail == request.auth.token.email;
+        allow update: if isRoomMember(roomId);
+        allow delete: if isSignedIn()
+          && (resource.data.senderEmail == request.auth.token.email
+              || isRoomOwner(roomId));
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
