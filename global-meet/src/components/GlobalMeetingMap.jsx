@@ -512,37 +512,16 @@ export default function GlobalMeetingMap() {
           </div>
         </form>
 
-        {/* Search toolbar */}
-        <div className="flex items-center gap-2">
-          <button onClick={() => setShowSearch(!showSearch)}
-            className="map-control-btn flex items-center gap-1.5 text-sm text-slate-600">
-            <Search className="w-4 h-4" /> {t('map.search', '검색')}
-          </button>
+        {/* Pins Dashboard */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-2 flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-slate-500">{t('map.totalPinsLabel', '현재 등록된 전체 핀셋')}</span>
+            <span className="text-2xl font-bold text-indigo-600">{pins.length}개</span>
+          </div>
+          <div className="p-3 bg-indigo-50 rounded-full">
+            <MapPin className="w-6 h-6 text-indigo-500" />
+          </div>
         </div>
-
-        {showSearch && (
-          <form onSubmit={handleSearch} className="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
-            <div className="flex gap-2">
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('map.searchPlaceholder', '장소 키워드 검색...')}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-              <button type="submit" disabled={searchLoading}
-                className="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-800 disabled:opacity-50">
-                {searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('map.searchBtn', '검색')}
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <ul className="mt-2 max-h-48 overflow-y-auto divide-y divide-slate-100">
-                {searchResults.map(item => (
-                  <li key={item.place_id} onClick={() => selectSearchResult(item)}
-                    className="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer rounded transition-colors">
-                    {item.display_name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </form>
-        )}
 
         {/* Pending pin card */}
         {pendingPin && (
@@ -747,7 +726,12 @@ export default function GlobalMeetingMap() {
                       )}
                     </td>
                     <td className="p-3 text-slate-500 hidden sm:table-cell whitespace-nowrap">
-                      {pin.createdByName || pin.createdBy}
+                      <span>{pin.createdByName || pin.createdBy}</span>
+                      {pin.createdAt && pin.createdAt.seconds && (
+                        <span className="ml-2 text-xs text-slate-400">
+                          {new Date(pin.createdAt.seconds * 1000).toISOString().slice(2, 10).replace(/-/g, '/')}
+                        </span>
+                      )}
                     </td>
                     <td className="p-3 text-slate-500 max-w-[120px] sm:max-w-xs truncate" title={pin.address}>
                       {(pin.address || '').split(' ').slice(0, 2).join(' ')}
@@ -817,7 +801,7 @@ export default function GlobalMeetingMap() {
         </div>
 
         {/* Chat */}
-        {/* <GlobalChat /> */}
+        <GlobalChat />
       </main>
     </div>
   );

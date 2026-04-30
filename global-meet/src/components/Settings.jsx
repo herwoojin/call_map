@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff } from 'lucide-react';
 
 export default function Settings() {
   const { currentUser, logout } = useAuth();
@@ -15,6 +15,31 @@ export default function Settings() {
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState(currentUser?.displayName || '');
   const [loading, setLoading] = useState(false);
+  const [discoverable, setDiscoverable] = useState(true);
+
+  useEffect(() => {
+    if (currentUser?.uid) {
+      getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+        if (docSnap.exists() && docSnap.data().discoverable !== undefined) {
+          setDiscoverable(docSnap.data().discoverable);
+        }
+      });
+    }
+  }, [currentUser]);
+
+  const handleToggleDiscoverable = async () => {
+    if (!currentUser?.uid) return;
+    const newVal = !discoverable;
+    setDiscoverable(newVal);
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        discoverable: newVal
+      });
+    } catch (err) {
+      console.error(err);
+      setDiscoverable(!newVal); // revert
+    }
+  };
 
   const handleUpdate = async () => {
     if (!nickname.trim()) return;
@@ -144,6 +169,27 @@ export default function Settings() {
                   <p className="text-xs text-slate-500 font-medium">{t('settings.userId', '사용자 ID')}</p>
                   <p className="text-slate-800 font-mono text-sm break-all">{currentUser?.uid}</p>
                 </div>
+              </div>
+
+              {/* Discoverability Toggle */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${discoverable ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                    {discoverable ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <p className="text-slate-800 font-medium">{t('settings.discoverable', '대화 상대로 검색 허용')}</p>
+                    <p className="text-xs text-slate-500 font-medium">
+                      {discoverable ? t('settings.discoverableOn', '다른 사용자가 대화창에서 나를 찾을 수 있습니다.') : t('settings.discoverableOff', '다른 사용자가 대화창에서 나를 찾을 수 없습니다.')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleDiscoverable}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${discoverable ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${discoverable ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
             </div>
 
