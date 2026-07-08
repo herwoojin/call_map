@@ -116,6 +116,8 @@ export default function GlobalMeetingMap() {
   const [pins, setPins] = useState([]);
   const [address, setAddress] = useState('');
   const [pinTitle, setPinTitle] = useState('');
+  const [pinCategory, setPinCategory] = useState('');
+  const [pinDetail, setPinDetail] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingPin, setPendingPin] = useState(null);
   const [flyTarget, setFlyTarget] = useState(null);
@@ -183,20 +185,22 @@ export default function GlobalMeetingMap() {
       );
     });
 
-    const headers = ['핀제목(정보기입)', '작성자', '주소', '위도', '경도', '생성일자'];
+    const headers = ['핀제목(정보기입)', '구분', '상세내용', '작성자', '주소', '위도', '경도', '생성일자'];
     const csvRows = [headers.join(',')];
 
     filteredPins.forEach(pin => {
       const title = `"${(pin.title || '제목 없음').replace(/"/g, '""')}"`;
+      const category = `"${(pin.category || '').replace(/"/g, '""')}"`;
+      const detail = `"${(pin.detail || '').replace(/"/g, '""')}"`;
       const creator = `"${(pin.createdByName || pin.createdBy || '').replace(/"/g, '""')}"`;
       const addr = `"${(pin.address || '').replace(/"/g, '""')}"`;
       const lat = pin.lat;
       const lng = pin.lng;
-      const date = pin.createdAt && pin.createdAt.seconds 
-        ? `"${new Date(pin.createdAt.seconds * 1000).toLocaleString()}"` 
+      const date = pin.createdAt && pin.createdAt.seconds
+        ? `"${new Date(pin.createdAt.seconds * 1000).toLocaleString()}"`
         : '""';
-      
-      csvRows.push([title, creator, addr, lat, lng, date].join(','));
+
+      csvRows.push([title, category, detail, creator, addr, lat, lng, date].join(','));
     });
 
     const csvContent = '\uFEFF' + csvRows.join('\n'); // UTF-8 BOM for Excel
@@ -321,12 +325,14 @@ export default function GlobalMeetingMap() {
         lat: result.lat, lng: result.lng,
         address: address.trim(), resolvedAddress: result.display,
         title: pinTitle.trim() || address.trim(),
+        category: pinCategory.trim(),
+        detail: pinDetail.trim(),
         createdBy: myEmail, createdByName: currentUser.displayName || '',
         createdAt: serverTimestamp(),
       });
       setFlyTarget([result.lat, result.lng]);
       setFlyZoom(14);
-      setAddress(''); setPinTitle('');
+      setAddress(''); setPinTitle(''); setPinCategory(''); setPinDetail('');
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -348,10 +354,12 @@ export default function GlobalMeetingMap() {
         address: pendingPin.address,
         resolvedAddress: pendingPin.address,
         title: pinTitle.trim() || pendingPin.address.split(',')[0],
+        category: pinCategory.trim(),
+        detail: pinDetail.trim(),
         createdBy: myEmail, createdByName: currentUser.displayName || '',
         createdAt: serverTimestamp(),
       });
-      setPendingPin(null); setPinTitle('');
+      setPendingPin(null); setPinTitle(''); setPinCategory(''); setPinDetail('');
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -486,16 +494,19 @@ export default function GlobalMeetingMap() {
 
       <main className="max-w-7xl mx-auto px-4 py-4 space-y-4">
         {/* Address input form */}
-        <form onSubmit={handleAddByAddress} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <form onSubmit={handleAddByAddress} className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 space-y-2">
           <div className="flex flex-col sm:flex-row gap-2">
             <input id="pin-title-input" value={pinTitle} onChange={e => setPinTitle(e.target.value)}
               placeholder={t('map.pinTitlePlaceholder', '핀 제목 (선택)')}
+              className="flex-[0.4] px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+            <input id="pin-category-input" value={pinCategory} onChange={e => setPinCategory(e.target.value)}
+              placeholder={t('map.pinCategoryPlaceholder', '구분 (예: 거래처, 지인)')}
               className="flex-[0.4] px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
             <div className="flex-1 relative flex items-center">
               <input id="address-input" value={address} onChange={e => setAddress(e.target.value)}
                 placeholder={t('map.addressPlaceholder', '주소를 입력하세요')}
                 className="w-full px-3 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-              <button 
+              <button
                 type="button"
                 onClick={openPostcode}
                 className="absolute right-2 p-1.5 text-lg hover:bg-slate-100 rounded-md btn-ghost gc-postcode transition-colors"
@@ -504,8 +515,13 @@ export default function GlobalMeetingMap() {
                 📫
               </button>
             </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input id="pin-detail-input" value={pinDetail} onChange={e => setPinDetail(e.target.value)}
+              placeholder={t('map.pinDetailPlaceholder', '상세내용 (선택)')}
+              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
             <button type="submit" disabled={loading} id="add-pin-btn"
-              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-1.5">
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {t('map.addPin', '핀 추가')}
             </button>
@@ -533,13 +549,19 @@ export default function GlobalMeetingMap() {
               <input value={pinTitle} onChange={e => setPinTitle(e.target.value)}
                 placeholder={t('map.pinTitlePlaceholder', '핀 제목 (선택)')}
                 className="mt-2 w-full px-2 py-1.5 border border-orange-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-300" />
+              <input value={pinCategory} onChange={e => setPinCategory(e.target.value)}
+                placeholder={t('map.pinCategoryPlaceholder', '구분 (예: 거래처, 지인)')}
+                className="mt-2 w-full px-2 py-1.5 border border-orange-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-300" />
+              <input value={pinDetail} onChange={e => setPinDetail(e.target.value)}
+                placeholder={t('map.pinDetailPlaceholder', '상세내용 (선택)')}
+                className="mt-2 w-full px-2 py-1.5 border border-orange-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-orange-300" />
             </div>
             <div className="flex gap-2">
               <button onClick={confirmPending} disabled={loading}
                 className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50">
                 {t('map.confirm', '추가')}
               </button>
-              <button onClick={() => { setPendingPin(null); setPinTitle(''); }}
+              <button onClick={() => { setPendingPin(null); setPinTitle(''); setPinCategory(''); setPinDetail(''); }}
                 className="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">
                 {t('map.cancel', '취소')}
               </button>
@@ -589,6 +611,14 @@ export default function GlobalMeetingMap() {
                   <Popup>
                     <div className="min-w-[180px]">
                       <p className="font-semibold text-sm">{pin.title || pin.address}</p>
+                      {pin.category && (
+                        <span className="inline-block mt-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[11px] font-medium">
+                          {pin.category}
+                        </span>
+                      )}
+                      {pin.detail && (
+                        <p className="text-xs text-gray-600 mt-1.5 whitespace-pre-wrap break-words">{pin.detail}</p>
+                      )}
                       <p className="text-xs text-gray-500 mt-1">{pin.resolvedAddress || pin.address}</p>
                       <p className="text-xs text-gray-400 mt-1">📌 {pin.createdByName || pin.createdBy}</p>
                       {pin.createdBy === myEmail && (
@@ -692,6 +722,7 @@ export default function GlobalMeetingMap() {
               <thead className="bg-slate-50 text-slate-600 font-medium whitespace-nowrap">
                 <tr>
                   <th className="p-3 border-b border-slate-100">핀제목(정보기입)</th>
+                  <th className="p-3 border-b border-slate-100">구분</th>
                   <th className="p-3 border-b border-slate-100 hidden sm:table-cell">작성자</th>
                   <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
@@ -702,6 +733,8 @@ export default function GlobalMeetingMap() {
                   const searchLower = tableFilter.toLowerCase();
                   return (
                     (pin.title || '').toLowerCase().includes(searchLower) ||
+                    (pin.category || '').toLowerCase().includes(searchLower) ||
+                    (pin.detail || '').toLowerCase().includes(searchLower) ||
                     (pin.address || '').toLowerCase().includes(searchLower) ||
                     (pin.createdByName || pin.createdBy || '').toLowerCase().includes(searchLower)
                   );
@@ -717,12 +750,26 @@ export default function GlobalMeetingMap() {
                           autoFocus
                         />
                       ) : (
-                        <button 
-                          onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
-                          className="hover:text-indigo-600 hover:underline text-left font-semibold break-words"
-                        >
-                          {pin.title || '제목 없음'}
-                        </button>
+                        <div>
+                          <button
+                            onClick={() => { setFlyTarget([pin.lat, pin.lng]); setFlyZoom(15); }}
+                            className="hover:text-indigo-600 hover:underline text-left font-semibold break-words"
+                          >
+                            {pin.title || '제목 없음'}
+                          </button>
+                          {pin.detail && (
+                            <p className="text-xs text-slate-400 font-normal mt-0.5 break-words whitespace-pre-wrap">{pin.detail}</p>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-3 whitespace-nowrap">
+                      {pin.category ? (
+                        <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-xs font-medium">
+                          {pin.category}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
                     <td className="p-3 text-slate-500 hidden sm:table-cell whitespace-nowrap">
@@ -790,7 +837,7 @@ export default function GlobalMeetingMap() {
                 ))}
                 {pins.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="p-6 text-center text-slate-400 text-sm">
+                    <td colSpan="5" className="p-6 text-center text-slate-400 text-sm">
                       등록된 핀이 없습니다.
                     </td>
                   </tr>
