@@ -185,7 +185,7 @@ export default function GlobalMeetingMap() {
       );
     });
 
-    const headers = ['핀제목(정보기입)', '구분', '상세내용', '작성자', '주소', '위도', '경도', '생성일자'];
+    const headers = ['핀정보(점포명)', '구분(팀)', '상세내용', '주소(지역)', '작성자', '위도', '경도', '생성일자'];
     const csvRows = [headers.join(',')];
 
     filteredPins.forEach(pin => {
@@ -200,7 +200,7 @@ export default function GlobalMeetingMap() {
         ? `"${new Date(pin.createdAt.seconds * 1000).toLocaleString()}"`
         : '""';
 
-      csvRows.push([title, category, detail, creator, addr, lat, lng, date].join(','));
+      csvRows.push([title, category, detail, addr, creator, lat, lng, date].join(','));
     });
 
     const csvContent = '\uFEFF' + csvRows.join('\n'); // UTF-8 BOM for Excel
@@ -721,10 +721,10 @@ export default function GlobalMeetingMap() {
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-slate-50 text-slate-600 font-medium whitespace-nowrap">
                 <tr>
-                  <th className="p-3 border-b border-slate-100">핀제목(정보기입)</th>
-                  <th className="p-3 border-b border-slate-100">구분</th>
+                  <th className="p-3 border-b border-slate-100">핀정보(점포명)</th>
+                  <th className="p-3 border-b border-slate-100">구분(팀)</th>
+                  <th className="p-3 border-b border-slate-100">주소(지역)</th>
                   <th className="p-3 border-b border-slate-100 hidden sm:table-cell">작성자</th>
-                  <th className="p-3 border-b border-slate-100">주소</th>
                   <th className="p-3 border-b border-slate-100 text-center">기능</th>
                 </tr>
               </thead>
@@ -772,6 +772,9 @@ export default function GlobalMeetingMap() {
                         <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
+                    <td className="p-3 text-slate-500 max-w-[120px] sm:max-w-xs truncate" title={pin.address}>
+                      {(pin.address || '').split(' ').slice(0, 2).join(' ')}
+                    </td>
                     <td className="p-3 text-slate-500 hidden sm:table-cell whitespace-nowrap">
                       <span>{pin.createdByName || pin.createdBy}</span>
                       {pin.createdAt && pin.createdAt.seconds && (
@@ -779,9 +782,6 @@ export default function GlobalMeetingMap() {
                           {new Date(pin.createdAt.seconds * 1000).toISOString().slice(2, 10).replace(/-/g, '/')}
                         </span>
                       )}
-                    </td>
-                    <td className="p-3 text-slate-500 max-w-[120px] sm:max-w-xs truncate" title={pin.address}>
-                      {(pin.address || '').split(' ').slice(0, 2).join(' ')}
                     </td>
                     <td className="p-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1 sm:gap-2">
