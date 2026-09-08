@@ -26,7 +26,18 @@
     "stopSharing": "Stop Sharing",
     "sharingUsers": "Sharing Location",
     "addressNotFound": "Address not found",
-    "locationError": "Unable to get location"
+    "locationError": "Unable to get location",
+    "passwordPrompt": "Enter the password to access the map.",
+    "password": "Password",
+    "passwordMismatch": "The password does not match.",
+    "resizeHandle": "Resize",
+    "searchList": "Search list...",
+    "exportExcel": "Export to Excel",
+    "colTitle": "Pin (store name)",
+    "colCategory": "Category (team)",
+    "colAddress": "Address (area)",
+    "colAuthor": "Added by",
+    "colActions": "Actions"
   },
   "chat": {
     "selectRoom": "Select a room...",
@@ -47,10 +58,22 @@
     "roomNamePlaceholder": "Enter room name",
     "inviteMembers": "Invite Members",
     "searchUserPlaceholder": "Search by email or name",
-    "create": "Create"
+    "create": "Create",
+    "title": "CHAT.CHECK",
+    "subtitle": "Incoming messages are auto-translated into your language",
+    "translating": "Translating...",
+    "listen": "Listen to original",
+    "copy": "Copy"
   },
   "common": {
     "cancel": "Cancel",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "delete": "Delete"
+  },
+  "settings": {
+    "preferredLanguage": "Preferred language",
+    "myLanguage": "My language",
+    "myLanguageHelp": "Incoming chat messages are translated into this language.",
+    "languageSaveFailed": "Could not save your language setting."
   }
 }

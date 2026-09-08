@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, MapPin, Crosshair, Navigation, X, List, Plus, Trash2, Loader2, Share2, Eye, EyeOff, Settings as SettingsIcon, Edit2, Check, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GlobalChat from './GlobalChat';
+import LanguageSwitcher from './LanguageSwitcher';
 
 // ── Fix default Leaflet icon ──
 delete L.Icon.Default.prototype._getIconUrl;
@@ -159,7 +160,7 @@ export default function GlobalMeetingMap() {
       localStorage.setItem('globalMapAuthenticated', 'true');
       setIsAuthenticated(true);
     } else {
-      setPasswordError('비밀번호가 일치하지 않습니다.');
+      setPasswordError(t('map.passwordMismatch', '비밀번호가 일치하지 않습니다.'));
       setPasswordInput('');
     }
   };
@@ -440,7 +441,7 @@ export default function GlobalMeetingMap() {
               <MapPin className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold text-slate-800">연결, 잇다. JINI+US</h2>
-            <p className="text-sm text-slate-500 mt-2 text-center">지도에 접근하기 위해<br/>비밀번호를 입력해주세요.</p>
+            <p className="text-sm text-slate-500 mt-2 text-center">{t('map.passwordPrompt', '지도에 접근하려면 비밀번호를 입력해주세요.')}</p>
           </div>
           
           <form onSubmit={handlePasswordSubmit} className="space-y-5">
@@ -449,7 +450,7 @@ export default function GlobalMeetingMap() {
                 type="password"
                 value={passwordInput}
                 onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }}
-                placeholder="비밀번호"
+                placeholder={t('map.password', '비밀번호')}
                 autoFocus
                 className={`w-full px-4 py-3.5 border ${passwordError ? 'border-red-400 bg-red-50/30' : 'border-slate-200'} rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all text-center tracking-[0.5em] text-xl font-medium`}
               />
@@ -477,7 +478,9 @@ export default function GlobalMeetingMap() {
           <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
             <span className="text-2xl">🌐</span> 연결, 잇다. <span className="text-indigo-500">JINI+US</span>
           </h1>
-          <div 
+          <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <div
             onClick={() => navigate('/settings')}
             className="flex items-center gap-3 cursor-pointer hover:bg-slate-100 p-2 rounded-xl transition-colors"
             title={t('settings.title', '내 프로필')}
@@ -489,6 +492,7 @@ export default function GlobalMeetingMap() {
                 <SettingsIcon className="w-3 h-3 text-slate-500" />
               </div>
             </div>
+          </div>
           </div>
         </div>
       </header>
@@ -682,7 +686,7 @@ export default function GlobalMeetingMap() {
 
           <div id="mapResizeHandle" className="map-resize-handle" title="드래그하여 지도 높이 조절 (더블클릭 = 초기화)" role="separator" aria-orientation="horizontal" tabIndex="0" onMouseDown={handleResizeStart} onTouchStart={handleResizeStart} onDoubleClick={() => setMapHeight(500)}>
             <span className="mrh-grip"></span>
-            <span className="mrh-label">↕ 높이 조절</span>
+            <span className="mrh-label">↕ {t('map.resizeHandle', '높이 조절')}</span>
           </div>
         </div>
 
@@ -701,7 +705,7 @@ export default function GlobalMeetingMap() {
                   type="text" 
                   value={tableFilter}
                   onChange={e => setTableFilter(e.target.value)}
-                  placeholder="목록 검색..."
+                  placeholder={t('map.searchList', '목록 검색...')}
                   className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
                 />
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
@@ -712,7 +716,7 @@ export default function GlobalMeetingMap() {
                 title="엑셀(CSV) 다운로드"
               >
                 <Download className="w-4 h-4" />
-                <span>엑셀 저장</span>
+                <span>{t('map.exportExcel', '엑셀 저장')}</span>
               </button>
             </div>
           </div>
@@ -722,11 +726,11 @@ export default function GlobalMeetingMap() {
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-slate-50 text-slate-600 font-medium whitespace-nowrap">
                 <tr>
-                  <th className="p-3 border-b border-slate-100">핀정보(점포명)</th>
-                  <th className="p-3 border-b border-slate-100">구분(팀)</th>
-                  <th className="p-3 border-b border-slate-100">주소(지역)</th>
-                  <th className="p-3 border-b border-slate-100 hidden sm:table-cell">작성자</th>
-                  <th className="p-3 border-b border-slate-100 text-center">기능</th>
+                  <th className="p-3 border-b border-slate-100">{t('map.colTitle', '핀정보(점포명)')}</th>
+                  <th className="p-3 border-b border-slate-100">{t('map.colCategory', '구분(팀)')}</th>
+                  <th className="p-3 border-b border-slate-100">{t('map.colAddress', '주소(지역)')}</th>
+                  <th className="p-3 border-b border-slate-100 hidden sm:table-cell">{t('map.colAuthor', '작성자')}</th>
+                  <th className="p-3 border-b border-slate-100 text-center">{t('map.colActions', '기능')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">

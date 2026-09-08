@@ -3,6 +3,14 @@
   command = "npm run build"
   publish = "dist"
 
+# 챗.첵 번역/TTS 프록시. 경로는 base(global-meet) 기준이다.
+# 브라우저에서 구글 번역을 직접 부르면 CORS·차단에 걸리므로 서버를 거친다.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA 폴백. Netlify 는 /.netlify/functions/* 를 이 규칙보다 먼저 처리하므로
+# 함수 호출이 index.html 로 새지 않는다.
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -26,7 +26,18 @@
     "stopSharing": "停止分享",
     "sharingUsers": "正在分享位置",
     "addressNotFound": "找不到地址",
-    "locationError": "无法获取位置"
+    "locationError": "无法获取位置",
+    "passwordPrompt": "请输入密码以访问地图。",
+    "password": "密码",
+    "passwordMismatch": "密码不匹配。",
+    "resizeHandle": "调整高度",
+    "searchList": "搜索列表...",
+    "exportExcel": "导出到 Excel",
+    "colTitle": "图钉信息(店名)",
+    "colCategory": "分类(团队)",
+    "colAddress": "地址(地区)",
+    "colAuthor": "添加者",
+    "colActions": "操作"
   },
   "chat": {
     "selectRoom": "选择聊天室...",
@@ -47,10 +58,22 @@
     "roomNamePlaceholder": "输入聊天室名称",
     "inviteMembers": "邀请成员",
     "searchUserPlaceholder": "通过邮箱或姓名搜索",
-    "create": "创建"
+    "create": "创建",
+    "title": "聊天·查",
+    "subtitle": "收到的消息会自动翻译成你的语言",
+    "translating": "翻译中...",
+    "listen": "收听原文",
+    "copy": "复制"
   },
   "common": {
     "cancel": "取消",
-    "loading": "加载中..."
+    "loading": "加载中...",
+    "delete": "删除"
+  },
+  "settings": {
+    "preferredLanguage": "首选语言",
+    "myLanguage": "我的语言",
+    "myLanguageHelp": "收到的聊天消息将翻译成此语言。",
+    "languageSaveFailed": "无法保存语言设置。"
   }
 }

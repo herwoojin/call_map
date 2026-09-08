@@ -6,17 +6,33 @@ import { db, auth } from '../lib/firebase';
 import { COL } from '../lib/collections';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff, Languages } from 'lucide-react';
+import { LANGUAGES, languageLabel } from '../lib/languages';
 
 export default function Settings() {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, myLanguage, updateUserProfile } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [nickname, setNickname] = useState(currentUser?.displayName || '');
   const [loading, setLoading] = useState(false);
   const [discoverable, setDiscoverable] = useState(true);
+  const [savingLang, setSavingLang] = useState(false);
+
+  // 채팅 번역 타깃 언어. 저장하면 AuthContext 구독이 즉시 반영한다.
+  const handleLanguageChange = async (code) => {
+    if (!code || code === myLanguage) return;
+    setSavingLang(true);
+    try {
+      await updateUserProfile({ preferredLanguage: code });
+    } catch (err) {
+      console.error(err);
+      alert(t('settings.languageSaveFailed', '언어 설정을 저장하지 못했습니다.'));
+    } finally {
+      setSavingLang(false);
+    }
+  };
 
   useEffect(() => {
     if (currentUser?.uid) {
@@ -142,7 +158,8 @@ export default function Settings() {
                 )}
                 
                 <p className="text-sm text-slate-500 mt-2 flex items-center gap-1.5">
-                  <span className="text-indigo-500">🌐</span> 선호 언어: {t('language.korean', '한국어(Korean)')}
+                  <span className="text-indigo-500">🌐</span>
+                  {t('settings.preferredLanguage', '선호 언어')}: {languageLabel(myLanguage)}
                 </p>
                 <p className="text-sm text-slate-500 mt-1">
                   가입일: {new Date(parseInt(currentUser?.metadata?.createdAt || Date.now())).toLocaleDateString()}
@@ -169,6 +186,29 @@ export default function Settings() {
                 <div>
                   <p className="text-xs text-slate-500 font-medium">{t('settings.userId', '사용자 ID')}</p>
                   <p className="text-slate-800 font-mono text-sm break-all">{currentUser?.uid}</p>
+                </div>
+              </div>
+
+              {/* 챗.첵 번역 언어 — 받는 메시지가 이 언어로 번역된다 */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-start gap-4">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Languages className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-800 font-medium">{t('settings.myLanguage', '내 언어')}</p>
+                  <p className="text-xs text-slate-500 mb-2">
+                    {t('settings.myLanguageHelp', '받는 대화 메시지가 이 언어로 번역됩니다.')}
+                  </p>
+                  <select
+                    value={myLanguage}
+                    disabled={savingLang}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50"
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>{l.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

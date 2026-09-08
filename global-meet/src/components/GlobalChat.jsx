@@ -3,16 +3,20 @@ import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, orderBy, 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { COL, STORAGE } from '../lib/collections';
+import { DEFAULT_LANGUAGE, languageFlag, languageLabel, isRtl, speechTag } from '../lib/languages';
+import { translateText, playTTS } from '../lib/translate';
+import { pronunciationFor } from '../lib/phonetics';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { Send, Plus, Trash2, LogOut, Users, Mic, MicOff, Volume2, VolumeX, Image as ImageIcon, X, Download, Loader2 } from 'lucide-react';
+import { Send, Plus, Trash2, LogOut, Users, Mic, MicOff, Volume2, VolumeX, Image as ImageIcon, X, Download, Loader2, Copy, Check, Languages } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { compressImageToWebp } from '../lib/imageUtils';
 import CreateRoomModal from './CreateRoomModal';
 import ImageLightbox from './ImageLightbox';
 
 export default function GlobalChat() {
-  const { currentUser } = useAuth();
+  const { currentUser, myLanguage } = useAuth();
   const { t } = useTranslation();
   const myEmail = (currentUser?.email || '').toLowerCase();
 
@@ -30,6 +34,39 @@ export default function GlobalChat() {
   const recognitionRef = useRef(null);
   const prevMsgCountRef = useRef(0);
   const fileInputRef = useRef(null);
+
+  // 챗.첵 — 번역/음성 상태
+  const [speakingId, setSpeakingId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+  const ttsRef = useRef(null);
+  const translatingRef = useRef(new Set()); // 번역 진행 중인 메시지
+  const failedRef = useRef(new Map());      // 메시지별 실패 횟수 (재시도 상한용)
+
+  // TTS — 원문을 그 언어 그대로 읽어준다 (PRD 4.5 F-CHAT-04).
+  // 200자 제한이 있어 lib/translate.js 가 문장 단위로 잘라 순차 재생한다.
+  // 아래 메시지 구독 effect(자동 음성)에서 호출하므로 effect 보다 먼저 선언한다.
+  const speakText = (text, lang = DEFAULT_LANGUAGE, msgId = null) => {
+    const wasSpeaking = speakingId && speakingId === msgId;
+    try { ttsRef.current?.pause(); } catch { /* noop */ }
+    ttsRef.current = null;
+    setSpeakingId(null);
+    if (wasSpeaking) return; // 같은 메시지를 다시 누르면 정지
+
+    const controller = playTTS(text, lang);
+    ttsRef.current = controller;
+    setSpeakingId(msgId);
+    controller.onended = () => setSpeakingId(null);
+    controller.onerror = () => setSpeakingId(null);
+    controller.play();
+  };
+
+  const copyText = async (text, msgId) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId((v) => (v === msgId ? null : v)), 1500);
+    } catch (err) { console.warn(err); }
+  };
 
   // Subscribe to rooms
   useEffect(() => {
@@ -61,12 +98,73 @@ export default function GlobalChat() {
       // Auto TTS for new messages
       if (autoVoice && msgs.length > prevMsgCountRef.current) {
         const newMsg = msgs[msgs.length - 1];
-        if (newMsg && newMsg.senderEmail !== myEmail && newMsg.text) speakText(newMsg.text, newMsg.sourceLanguage);
+        if (newMsg && newMsg.senderEmail !== myEmail && newMsg.text) {
+          speakText(newMsg.text, newMsg.sourceLanguage || DEFAULT_LANGUAGE, newMsg.id);
+        }
       }
       prevMsgCountRef.current = msgs.length;
     });
     return unsub;
   }, [selectedRoom, myEmail, autoVoice]);
+
+  // ── 자동 번역 (PRD 4.5 F-CHAT-03)
+  // 내 언어와 다른 메시지를 번역해 메시지 문서에 캐시한다.
+  // 캐시는 방 전체가 공유하므로 번역 요청은 (메시지 × 언어) 당 한 번뿐이다.
+  //
+  // 번역 API 는 짧은 시간에 몰아치면 429 를 돌려준다. 방에 처음 들어와
+  // 안 읽은 메시지가 여럿일 때가 딱 그 상황이라, 한 건씩 순차로 처리하고
+  // 사이에 간격을 둔다. 실패는 메시지별로 최대 3회까지만 재시도한다.
+  useEffect(() => {
+    if (!selectedRoom || !myLanguage) return;
+
+    const pending = messages.filter((msg) => {
+      if (!(msg.text || '').trim()) return false;
+      const src = msg.sourceLanguage || DEFAULT_LANGUAGE;
+      if (src === myLanguage) return false;                    // 같은 언어 → 불필요
+      if (msg.translations?.[myLanguage]) return false;        // 이미 캐시됨
+      if (translatingRef.current.has(msg.id)) return false;    // 진행 중
+      if ((failedRef.current.get(msg.id) || 0) >= 3) return false; // 재시도 소진
+      return true;
+    });
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      for (const msg of pending) {
+        if (cancelled) return;
+
+        const original = msg.text.trim();
+        const src = msg.sourceLanguage || DEFAULT_LANGUAGE;
+        translatingRef.current.add(msg.id);
+        try {
+          const result = await translateText(original, myLanguage, src);
+          const pron = pronunciationFor(result.romanization, original, myLanguage, src);
+          await updateDoc(doc(db, COL.chatRooms, selectedRoom.id, 'messages', msg.id), {
+            [`translations.${myLanguage}`]: result.text,
+            ...(pron ? { [`pronunciations.${myLanguage}`]: pron } : {}),
+          });
+          failedRef.current.delete(msg.id);
+        } catch (err) {
+          failedRef.current.set(msg.id, (failedRef.current.get(msg.id) || 0) + 1);
+          console.warn('[chat.check] 번역 실패:', err?.message);
+        } finally {
+          translatingRef.current.delete(msg.id);
+        }
+
+        // 연속 호출 간격 — 번역 API 의 rate limit 회피
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [messages, myLanguage, selectedRoom]);
+
+  // 방을 바꾸면 실패 기록을 비워 다시 시도할 수 있게 한다
+  useEffect(() => { failedRef.current.clear(); }, [selectedRoom?.id, myLanguage]);
+
+  // 언마운트 시 재생 중이던 음성 정리
+  useEffect(() => () => { try { ttsRef.current?.pause(); } catch { /* noop */ } }, []);
 
   // Auto scroll
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -80,7 +178,7 @@ export default function GlobalChat() {
     try {
       await addDoc(collection(db, COL.chatRooms, selectedRoom.id, 'messages'), {
         text: msgText, senderEmail: myEmail,
-        senderName: currentUser.displayName || '', sourceLanguage: 'ko',
+        senderName: currentUser.displayName || '', sourceLanguage: myLanguage,
         timestamp: serverTimestamp(), readBy: [myEmail],
       });
     } catch (err) { console.error(err); }
@@ -125,7 +223,7 @@ export default function GlobalChat() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) { alert('Speech recognition not supported'); return; }
     const recognition = new SpeechRecognition();
-    recognition.lang = 'ko-KR';
+    recognition.lang = speechTag(myLanguage); // 내 언어로 받아쓴다
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
@@ -137,14 +235,6 @@ export default function GlobalChat() {
     recognitionRef.current = recognition;
     recognition.start();
     setRecording(true);
-  };
-
-  // TTS
-  const speakText = (text, lang = 'ko') => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    const langMap = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN' };
-    utterance.lang = langMap[lang] || 'ko-KR';
-    speechSynthesis.speak(utterance);
   };
 
   // Image upload
@@ -162,7 +252,7 @@ export default function GlobalChat() {
       await addDoc(collection(db, COL.chatRooms, selectedRoom.id, 'messages'), {
         text: '', imageUrl: url, imagePath: storagePath, imageWidth: width, imageHeight: height,
         senderEmail: myEmail, senderName: currentUser.displayName || '',
-        sourceLanguage: 'ko', timestamp: serverTimestamp(), readBy: [myEmail],
+        sourceLanguage: myLanguage, timestamp: serverTimestamp(), readBy: [myEmail],
       });
     } catch (err) { console.error(err); }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
@@ -173,6 +263,22 @@ export default function GlobalChat() {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" style={{ height: '32rem' }}>
+      {/* 챗.첵 헤더 — 지금 어떤 언어로 번역되는지 항상 보이게 한다 */}
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1 bg-slate-50">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Languages className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+          <span className="text-sm font-bold text-slate-800">{t('chat.title', '챗.첵')}</span>
+          <span className="text-[11px] text-slate-400 truncate hidden sm:inline">
+            {t('chat.subtitle', '받는 메시지가 내 언어로 자동 번역됩니다')}
+          </span>
+        </div>
+        <Link to="/settings" title={languageLabel(myLanguage)}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-slate-200 text-[11px] font-medium text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition-colors flex-shrink-0">
+          <span>{languageFlag(myLanguage)}</span>
+          <span className="uppercase">{myLanguage}</span>
+        </Link>
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-200 bg-slate-50">
         <select id="room-select" value={selectedRoom?.id || ''} onChange={e => {
@@ -226,7 +332,7 @@ export default function GlobalChat() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar" style={{ height: showMembers ? 'calc(100% - 11rem)' : 'calc(100% - 7rem)' }}>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar" style={{ height: showMembers ? 'calc(100% - 13rem)' : 'calc(100% - 9rem)' }}>
         {!selectedRoom ? (
           <div className="h-full flex items-center justify-center text-slate-400 text-sm">
             {t('chat.selectRoomPrompt', '대화방을 선택하거나 새로 만드세요')}
@@ -239,12 +345,49 @@ export default function GlobalChat() {
           const isMine = msg.senderEmail === myEmail;
           const allRead = selectedRoom?.members?.length > 0 && msg.readBy?.length >= selectedRoom.members.length;
           const ts = msg.timestamp?.toDate ? format(msg.timestamp.toDate(), 'HH:mm') : '';
+
+          // 챗.첵 — 내 언어와 다르면 번역문을 본문으로, 원문은 아래에 작게
+          const srcLang = msg.sourceLanguage || DEFAULT_LANGUAGE;
+          const foreign = Boolean(msg.text) && srcLang !== myLanguage;
+          const translated = foreign ? msg.translations?.[myLanguage] : '';
+          const pron = foreign ? msg.pronunciations?.[myLanguage] : '';
+          const translating = foreign && !translated;
+
           return (
             <div key={msg.id} className={`chat-bubble-enter flex ${isMine ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] ${isMine ? 'order-2' : ''}`}>
                 {!isMine && <p className="text-xs text-slate-500 mb-0.5 ml-1">{msg.senderName}</p>}
                 <div className={`px-3 py-2 rounded-2xl text-sm ${isMine ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'}`}>
-                  {msg.text && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
+                  {msg.text && (
+                    <>
+                      <p className="whitespace-pre-wrap break-words"
+                        dir={isRtl(translated ? myLanguage : srcLang) ? 'rtl' : 'ltr'}>
+                        {translated || msg.text}
+                      </p>
+
+                      {translating && (
+                        <span className={`inline-flex items-center gap-1 mt-1 text-[11px] ${isMine ? 'text-white/70' : 'text-slate-400'}`}>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          {t('chat.translating', '번역 중...')}
+                        </span>
+                      )}
+
+                      {translated && (
+                        <div className={`mt-1.5 pt-1.5 border-t ${isMine ? 'border-white/25' : 'border-slate-100'}`}>
+                          <p className={`text-[11px] whitespace-pre-wrap break-words ${isMine ? 'text-white/70' : 'text-slate-400'}`}
+                            dir={isRtl(srcLang) ? 'rtl' : 'ltr'}
+                            title={languageLabel(srcLang)}>
+                            {languageFlag(srcLang)} {msg.text}
+                          </p>
+                          {pron && (
+                            <p className={`text-[11px] italic mt-0.5 break-words ${isMine ? 'text-white/60' : 'text-slate-400'}`}>
+                              🔉 {pron}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
                   {msg.imageUrl && (
                     <img src={msg.imageUrl} alt="" onClick={() => setLightboxImg(msg.imageUrl)}
                       className="mt-1 rounded-lg cursor-pointer hover:opacity-90 transition-opacity" style={{ maxWidth: 220 }} />
@@ -254,12 +397,24 @@ export default function GlobalChat() {
                   <span className="text-[10px] text-slate-400">{ts}</span>
                   {isMine && <span className={`text-[10px] ${allRead ? 'text-blue-500' : 'text-slate-400'}`}>✓✓</span>}
                   {msg.text && (
-                    <button onClick={() => speakText(msg.text, msg.sourceLanguage)} className="opacity-60 hover:opacity-100">
-                      <Volume2 className="w-3 h-3 text-slate-400" />
+                    <button onClick={() => speakText(msg.text, srcLang, msg.id)}
+                      aria-label={t('chat.listen', '원문 듣기')} title={t('chat.listen', '원문 듣기')}
+                      className="opacity-60 hover:opacity-100">
+                      <Volume2 className={`w-3 h-3 ${speakingId === msg.id ? 'text-indigo-500 animate-pulse' : 'text-slate-400'}`} />
+                    </button>
+                  )}
+                  {msg.text && (
+                    <button onClick={() => copyText(translated || msg.text, msg.id)}
+                      aria-label={t('chat.copy', '복사')} title={t('chat.copy', '복사')}
+                      className="opacity-60 hover:opacity-100">
+                      {copiedId === msg.id
+                        ? <Check className="w-3 h-3 text-emerald-500" />
+                        : <Copy className="w-3 h-3 text-slate-400" />}
                     </button>
                   )}
                   {isMine && (
-                    <button onClick={() => handleDeleteMsg(msg.id)} className="opacity-60 hover:opacity-100">
+                    <button onClick={() => handleDeleteMsg(msg.id)}
+                      aria-label={t('common.delete', '삭제')} className="opacity-60 hover:opacity-100">
                       <Trash2 className="w-3 h-3 text-slate-400" />
                     </button>
                   )}

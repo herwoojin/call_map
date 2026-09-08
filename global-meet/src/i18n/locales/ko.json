@@ -26,7 +26,18 @@
     "stopSharing": "공유 중지",
     "sharingUsers": "위치 공유 중",
     "addressNotFound": "주소를 찾을 수 없습니다",
-    "locationError": "위치를 가져올 수 없습니다"
+    "locationError": "위치를 가져올 수 없습니다",
+    "passwordPrompt": "지도에 접근하려면 비밀번호를 입력해주세요.",
+    "password": "비밀번호",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+    "resizeHandle": "높이 조절",
+    "searchList": "목록 검색...",
+    "exportExcel": "엑셀 저장",
+    "colTitle": "핀정보(점포명)",
+    "colCategory": "구분(팀)",
+    "colAddress": "주소(지역)",
+    "colAuthor": "작성자",
+    "colActions": "기능"
   },
   "chat": {
     "selectRoom": "대화방 선택...",
@@ -47,10 +58,22 @@
     "roomNamePlaceholder": "이름을 입력하세요",
     "inviteMembers": "멤버 초대",
     "searchUserPlaceholder": "이메일 또는 이름 검색",
-    "create": "만들기"
+    "create": "만들기",
+    "title": "챗.첵",
+    "subtitle": "받는 메시지가 내 언어로 자동 번역됩니다",
+    "translating": "번역 중...",
+    "listen": "원문 듣기",
+    "copy": "복사"
   },
   "common": {
     "cancel": "취소",
-    "loading": "로딩 중..."
+    "loading": "로딩 중...",
+    "delete": "삭제"
+  },
+  "settings": {
+    "preferredLanguage": "선호 언어",
+    "myLanguage": "내 언어",
+    "myLanguageHelp": "받는 대화 메시지가 이 언어로 번역됩니다.",
+    "languageSaveFailed": "언어 설정을 저장하지 못했습니다."
   }
 }
