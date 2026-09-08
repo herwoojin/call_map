@@ -3,6 +3,10 @@ global-meet/dist
 global-meet/dist-ssr
 global-meet/*.local
 
+# Firebase 서비스 계정 키 — 프로젝트 전체 권한을 가지므로 절대 커밋 금지
+*firebase-adminsdk*.json
+serviceAccountKey.json
+
 # Logs
 logs
 *.log

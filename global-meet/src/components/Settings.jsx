@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { COL } from '../lib/collections';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff } from 'lucide-react';
@@ -19,7 +20,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (currentUser?.uid) {
-      getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+      getDoc(doc(db, COL.users, currentUser.uid)).then(docSnap => {
         if (docSnap.exists() && docSnap.data().discoverable !== undefined) {
           setDiscoverable(docSnap.data().discoverable);
         }
@@ -32,7 +33,7 @@ export default function Settings() {
     const newVal = !discoverable;
     setDiscoverable(newVal);
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid), {
+      await updateDoc(doc(db, COL.users, currentUser.uid), {
         discoverable: newVal
       });
     } catch (err) {
@@ -51,7 +52,7 @@ export default function Settings() {
       });
       
       // Firestore Update
-      const userRef = doc(db, 'users', currentUser.uid);
+      const userRef = doc(db, COL.users, currentUser.uid);
       await updateDoc(userRef, {
         displayName: nickname.trim()
       });

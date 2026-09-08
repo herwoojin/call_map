@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where, orderBy, updateDoc, arrayUnion, arrayRemove, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { COL, STORAGE } from '../lib/collections';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Send, Plus, Trash2, LogOut, Users, Mic, MicOff, Volume2, VolumeX, Image as ImageIcon, X, Download, Loader2 } from 'lucide-react';
@@ -33,7 +34,7 @@ export default function GlobalChat() {
   // Subscribe to rooms
   useEffect(() => {
     if (!myEmail) return;
-    const q = query(collection(db, 'globalChatRooms'), where('members', 'array-contains', myEmail));
+    const q = query(collection(db, COL.chatRooms), where('members', 'array-contains', myEmail));
     const unsub = onSnapshot(q, snap => {
       const r = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setRooms(r);
@@ -45,7 +46,7 @@ export default function GlobalChat() {
   // Subscribe to messages
   useEffect(() => {
     if (!selectedRoom) { setMessages([]); return; }
-    const q = query(collection(db, 'globalChatRooms', selectedRoom.id, 'messages'), orderBy('timestamp', 'asc'));
+    const q = query(collection(db, COL.chatRooms, selectedRoom.id, 'messages'), orderBy('timestamp', 'asc'));
     const unsub = onSnapshot(q, snap => {
       const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setMessages(msgs);
@@ -53,7 +54,7 @@ export default function GlobalChat() {
       // Mark unread messages
       msgs.forEach(msg => {
         if (msg.senderEmail !== myEmail && msg.readBy && !msg.readBy.includes(myEmail)) {
-          updateDoc(doc(db, 'globalChatRooms', selectedRoom.id, 'messages', msg.id), { readBy: arrayUnion(myEmail) }).catch(() => {});
+          updateDoc(doc(db, COL.chatRooms, selectedRoom.id, 'messages', msg.id), { readBy: arrayUnion(myEmail) }).catch(() => {});
         }
       });
 
@@ -77,7 +78,7 @@ export default function GlobalChat() {
     const msgText = text.trim();
     setText('');
     try {
-      await addDoc(collection(db, 'globalChatRooms', selectedRoom.id, 'messages'), {
+      await addDoc(collection(db, COL.chatRooms, selectedRoom.id, 'messages'), {
         text: msgText, senderEmail: myEmail,
         senderName: currentUser.displayName || '', sourceLanguage: 'ko',
         timestamp: serverTimestamp(), readBy: [myEmail],
@@ -87,7 +88,7 @@ export default function GlobalChat() {
 
   // Delete message
   const handleDeleteMsg = async (msgId) => {
-    try { await deleteDoc(doc(db, 'globalChatRooms', selectedRoom.id, 'messages', msgId)); } catch (err) { console.error(err); }
+    try { await deleteDoc(doc(db, COL.chatRooms, selectedRoom.id, 'messages', msgId)); } catch (err) { console.error(err); }
   };
 
   // Delete room
@@ -95,11 +96,11 @@ export default function GlobalChat() {
     if (!selectedRoom) return;
     if (!confirm(t('chat.confirmDelete', '대화방을 삭제하시겠습니까?'))) return;
     try {
-      const msgsSnap = await getDocs(collection(db, 'globalChatRooms', selectedRoom.id, 'messages'));
+      const msgsSnap = await getDocs(collection(db, COL.chatRooms, selectedRoom.id, 'messages'));
       const batch = writeBatch(db);
       msgsSnap.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
-      await deleteDoc(doc(db, 'globalChatRooms', selectedRoom.id));
+      await deleteDoc(doc(db, COL.chatRooms, selectedRoom.id));
       setSelectedRoom(null);
     } catch (err) { console.error(err); }
   };
@@ -108,7 +109,7 @@ export default function GlobalChat() {
   const handleLeaveRoom = async () => {
     if (!selectedRoom) return;
     try {
-      const roomRef = doc(db, 'globalChatRooms', selectedRoom.id);
+      const roomRef = doc(db, COL.chatRooms, selectedRoom.id);
       await updateDoc(roomRef, { members: arrayRemove(myEmail) });
       setSelectedRoom(null);
     } catch (err) { console.error(err); }
@@ -154,11 +155,11 @@ export default function GlobalChat() {
     try {
       const { blob, width, height } = await compressImageToWebp(file);
       const fileName = `${Date.now()}.webp`;
-      const storagePath = `globalChatImages/${selectedRoom.id}/${currentUser.uid}/${fileName}`;
+      const storagePath = `${STORAGE.chatImages}/${selectedRoom.id}/${currentUser.uid}/${fileName}`;
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, blob, { contentType: 'image/webp' });
       const url = await getDownloadURL(storageRef);
-      await addDoc(collection(db, 'globalChatRooms', selectedRoom.id, 'messages'), {
+      await addDoc(collection(db, COL.chatRooms, selectedRoom.id, 'messages'), {
         text: '', imageUrl: url, imagePath: storagePath, imageWidth: width, imageHeight: height,
         senderEmail: myEmail, senderName: currentUser.displayName || '',
         sourceLanguage: 'ko', timestamp: serverTimestamp(), readBy: [myEmail],

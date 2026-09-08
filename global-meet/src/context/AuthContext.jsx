@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
+import { COL } from '../lib/collections';
 
 const AuthContext = createContext(null);
 
@@ -17,7 +18,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      const userRef = doc(db, 'users', user.uid);
+      const userRef = doc(db, COL.users, user.uid);
       const snap = await getDoc(userRef);
 
       if (!snap.exists()) {

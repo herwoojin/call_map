@@ -2,9 +2,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ⚠️ 이 파일은 Firebase 프로젝트(gen-lang-client-0283055211) 전체에 적용된다.
+    // 같은 프로젝트를 meet4u 앱도 사용하므로, 아래 "meet4u 영역" 규칙을 지우고
+    // 배포하면 meet4u 사이트가 즉시 망가진다. 절대 삭제하지 말 것.
+    // meet4u 쪽 규칙이 바뀌면 이 파일에도 같이 반영해야 한다.
+    // (근본 해결은 이 앱을 별도 Firebase 프로젝트로 분리하는 것)
+
+    // ---------- Helpers ----------
     function isSignedIn() { return request.auth != null; }
     function myUid()      { return request.auth.uid; }
     function myEmail()    { return request.auth.token.email.lower(); }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(myUid()))
+        && get(/databases/$(database)/documents/users/$(myUid())).data.role == 'admin';
+    }
 
     function onlyAffects(fields) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
@@ -24,14 +37,34 @@ service cloud.firestore {
         && roomDoc(roomId).data.createdBy == myEmail();
     }
 
-    match /users/{userId} {
+    // callMapChatRooms 전용 헬퍼. 위 헬퍼들은 globalChatRooms 를 보므로 재사용 불가.
+    function callMapRoomDoc(roomId) {
+      return get(/databases/$(database)/documents/callMapChatRooms/$(roomId));
+    }
+    function isCallMapRoomMember(roomId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/callMapChatRooms/$(roomId))
+        && myEmail() in callMapRoomDoc(roomId).data.members;
+    }
+    function isCallMapRoomOwner(roomId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/callMapChatRooms/$(roomId))
+        && callMapRoomDoc(roomId).data.createdBy == myEmail();
+    }
+
+    // ============================================================
+    // 이 앱(call_map) 전용 영역 — 다른 사이트와 데이터가 섞이지 않는다.
+    // 컬렉션 이름은 src/lib/collections.js 의 COL 과 반드시 일치해야 한다.
+    // ============================================================
+
+    match /callMapUsers/{userId} {
       allow read:   if isSignedIn();
       allow create: if isSignedIn() && myUid() == userId;
       allow update: if isSignedIn() && myUid() == userId;
       allow delete: if false;
     }
 
-    match /globalPins/{pinId} {
+    match /callMapPins/{pinId} {
       allow read:   if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.token.email;
@@ -43,14 +76,14 @@ service cloud.firestore {
         && resource.data.createdBy == request.auth.token.email;
     }
 
-    match /liveLocations/{userId} {
+    match /callMapLiveLocations/{userId} {
       allow read:   if isSignedIn();
       allow create: if isSignedIn() && myUid() == userId;
       allow update: if isSignedIn() && myUid() == userId;
       allow delete: if isSignedIn() && myUid() == userId;
     }
 
-    match /globalChatRooms/{roomId} {
+    match /callMapChatRooms/{roomId} {
       allow read: if isSignedIn() && myEmail() in resource.data.members;
       allow create: if isSignedIn()
         && request.resource.data.createdBy == myEmail()
@@ -67,16 +100,159 @@ service cloud.firestore {
         && resource.data.createdBy == myEmail();
 
       match /messages/{messageId} {
-        allow read:   if isRoomMember(roomId);
-        allow create: if isRoomMember(roomId)
+        allow read:   if isCallMapRoomMember(roomId);
+        allow create: if isCallMapRoomMember(roomId)
           && request.resource.data.senderEmail == request.auth.token.email;
-        allow update: if isRoomMember(roomId);
+        allow update: if isCallMapRoomMember(roomId);
         allow delete: if isSignedIn()
           && (resource.data.senderEmail == request.auth.token.email
-              || isRoomOwner(roomId));
+              || isCallMapRoomOwner(roomId));
       }
     }
 
+    // ============================================================
+    // meet4u 영역 — 이 앱은 더 이상 사용하지 않지만, 같은 Firebase
+    // 프로젝트를 쓰는 meet4u 사이트가 살아있으려면 그대로 있어야 한다.
+    // ============================================================
+
+    match /users/{userId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() && myUid() == userId;
+      allow update: if isSignedIn() && (myUid() == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /meetings/{meetingId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn()
+        && (resource.data.createdBy == myUid() || isAdmin());
+    }
+
+    match /projects/{projectId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn()
+        && (resource.data.createdBy == request.auth.token.email.lower() || isAdmin());
+    }
+
+    match /meta/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn() && isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.senderEmail == request.auth.token.email;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn()
+        && resource.data.senderEmail == request.auth.token.email;
+    }
+
+    match /chats/{chatId} {
+      allow read: if isSignedIn()
+        && request.auth.token.email in resource.data.participants;
+      allow create: if isSignedIn()
+        && request.auth.token.email in request.resource.data.participants;
+      allow update: if isSignedIn()
+        && request.auth.token.email in resource.data.participants;
+      allow delete: if isSignedIn()
+        && request.auth.token.email in resource.data.participants;
+
+      match /messages/{messageId} {
+        allow read, create: if isSignedIn()
+          && request.auth.token.email in
+             get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow update: if isSignedIn()
+          && request.auth.token.email in
+             get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow delete: if isSignedIn()
+          && resource.data.senderEmail == request.auth.token.email;
+      }
+    }
+
+    match /globalPins/{pinId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.token.email;
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && (resource.data.createdBy == request.auth.token.email || isAdmin());
+    }
+
+    match /globalChatRooms/{roomId} {
+      allow read: if isSignedIn() && myEmail() in resource.data.members;
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == myEmail()
+        && (myEmail() in request.resource.data.members);
+
+      allow update: if isSignedIn() && (
+        resource.data.createdBy == myEmail()
+        ||
+        (
+          myEmail() in resource.data.members
+          && onlyAffects(['members'])
+          && !(myEmail() in request.resource.data.members)
+        )
+      );
+
+      allow delete: if isSignedIn() && resource.data.createdBy == myEmail();
+
+      match /messages/{messageId} {
+        allow read: if isRoomMember(roomId);
+
+        allow create: if isRoomMember(roomId)
+          && request.resource.data.senderEmail == request.auth.token.email;
+
+        allow update: if isRoomMember(roomId);
+
+        allow delete: if isSignedIn()
+          && (resource.data.senderEmail == request.auth.token.email
+              || isRoomOwner(roomId)
+              || isAdmin());
+      }
+    }
+
+    match /liveLocations/{userId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn() && myUid() == userId;
+      allow update: if isSignedIn() && myUid() == userId;
+      allow delete: if isSignedIn() && myUid() == userId;
+    }
+
+    match /shops/{shopId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /guestMeetups/{id} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == myUid();
+
+      allow update: if isSignedIn() && (
+        resource.data.createdBy == myUid()
+        || isAdmin()
+        ||
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['roster', 'wait', 'closed', 'updatedAt'])
+      );
+
+      allow delete: if isSignedIn()
+        && (resource.data.createdBy == myUid() || isAdmin());
+    }
+
+    match /config/{configId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------- Default deny ----------
     match /{document=**} {
       allow read, write: if false;
     }

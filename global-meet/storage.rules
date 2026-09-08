@@ -1,15 +1,56 @@
 rules_version = '2';
+
+// ⚠️ 이 파일은 Firebase 프로젝트(gen-lang-client-0283055211) 전체에 적용된다.
+// 같은 프로젝트를 meet4u 앱도 사용하므로 아래 "meet4u 영역" 경로를 지우고
+// 배포하면 meet4u 의 이미지 업로드/조회가 즉시 망가진다. 절대 삭제하지 말 것.
+//
+// - callMapChatImages/{roomId}/{uid}/*  — 이 앱 전용 대화방 이미지
+// - commentImages/{meetingId}/{uid}/*   — meet4u 댓글 첨부 이미지
+// - globalChatImages/{roomId}/{uid}/*   — meet4u 글로벌 대화방 이미지
+// 업로드한 본인만 삭제 가능. 로그인한 사용자만 읽기 가능.
+
 service firebase.storage {
   match /b/{bucket}/o {
-    match /globalChatImages/{roomId}/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.auth.uid == userId
-                   && request.resource.size < 10 * 1024 * 1024
-                   && request.resource.contentType.matches('image/.*');
-      allow delete: if request.auth != null
-                    && request.auth.uid == userId;
+
+    function isSignedIn() {
+      return request.auth != null;
     }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Type/size guardrails — 최대 10MB, image/* MIME만
+    function isSafeImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // ---------- 이 앱(call_map) 전용 ----------
+    // 경로 이름은 src/lib/collections.js 의 STORAGE 와 반드시 일치해야 한다.
+    match /callMapChatImages/{roomId}/{uid}/{fileName} {
+      allow read:   if isSignedIn();
+      allow create: if isOwner(uid) && isSafeImage();
+      allow update: if false;
+      allow delete: if isOwner(uid);
+    }
+
+    // ---------- meet4u 영역 (삭제 금지) ----------
+    match /commentImages/{meetingId}/{uid}/{fileName} {
+      allow read:   if isSignedIn();
+      allow create: if isOwner(uid) && isSafeImage();
+      allow update: if false;
+      allow delete: if isOwner(uid);
+    }
+
+    match /globalChatImages/{roomId}/{uid}/{fileName} {
+      allow read:   if isSignedIn();
+      allow create: if isOwner(uid) && isSafeImage();
+      allow update: if false;
+      allow delete: if isOwner(uid);
+    }
+
+    // Default deny
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { COL } from '../lib/collections';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { X, Search, UserPlus, Users, Loader2, Check } from 'lucide-react';
@@ -22,7 +23,7 @@ export default function CreateRoomModal({ onClose }) {
     const loadUsers = async () => {
       setLoadingUsers(true);
       try {
-        const snap = await getDocs(collection(db, 'users'));
+        const snap = await getDocs(collection(db, COL.users));
         const users = snap.docs
           .map(d => ({ uid: d.id, ...d.data() }))
           .filter(u => (u.email || '').toLowerCase() !== myEmail)
@@ -68,7 +69,7 @@ export default function CreateRoomModal({ onClose }) {
         [myEmail]: currentUser.displayName || myEmail,
         ...Object.fromEntries(selectedMembers.map(m => [m.email, m.name])),
       };
-      await addDoc(collection(db, 'globalChatRooms'), {
+      await addDoc(collection(db, COL.chatRooms), {
         name: roomName.trim(),
         createdBy: myEmail,
         createdByName: currentUser.displayName || '',

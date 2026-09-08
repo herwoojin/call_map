@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../resize.css'; // Add resize CSS
 import { collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { COL } from '../lib/collections';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -165,7 +166,7 @@ export default function GlobalMeetingMap() {
 
   const handleUpdatePinTitle = async (pinId) => {
     try {
-      await updateDoc(doc(db, 'globalPins', pinId), {
+      await updateDoc(doc(db, COL.pins, pinId), {
         title: editTitle || '제목 없음'
       });
       setEditingPinId(null);
@@ -217,7 +218,7 @@ export default function GlobalMeetingMap() {
 
   const handleUpdateAdditionalInfo = async (pinId, info) => {
     try {
-      await updateDoc(doc(db, 'globalPins', pinId), {
+      await updateDoc(doc(db, COL.pins, pinId), {
         additionalInfo: info || ''
       });
     } catch (error) {
@@ -296,7 +297,7 @@ export default function GlobalMeetingMap() {
 
   // Subscribe to pins
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'globalPins'), snap => {
+    const unsub = onSnapshot(collection(db, COL.pins), snap => {
       setPins(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return unsub;
@@ -304,7 +305,7 @@ export default function GlobalMeetingMap() {
 
   // Subscribe to live locations
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'liveLocations'), snap => {
+    const unsub = onSnapshot(collection(db, COL.liveLocations), snap => {
       const now = Date.now();
       const users = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(u => u.updatedAt && (now - u.updatedAt.toMillis()) < 10 * 60 * 1000);
@@ -321,7 +322,7 @@ export default function GlobalMeetingMap() {
     try {
       const result = await geocodeAddress(address);
       if (!result) { alert(t('map.addressNotFound', '주소를 찾을 수 없습니다')); return; }
-      await addDoc(collection(db, 'globalPins'), {
+      await addDoc(collection(db, COL.pins), {
         lat: result.lat, lng: result.lng,
         address: address.trim(), resolvedAddress: result.display,
         title: pinTitle.trim() || address.trim(),
@@ -349,7 +350,7 @@ export default function GlobalMeetingMap() {
     if (!pendingPin) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'globalPins'), {
+      await addDoc(collection(db, COL.pins), {
         lat: pendingPin.lat, lng: pendingPin.lng,
         address: pendingPin.address,
         resolvedAddress: pendingPin.address,
@@ -366,7 +367,7 @@ export default function GlobalMeetingMap() {
 
   // Delete pin
   const handleDeletePin = async (pinId) => {
-    try { await deleteDoc(doc(db, 'globalPins', pinId)); } catch (err) { console.error(err); }
+    try { await deleteDoc(doc(db, COL.pins, pinId)); } catch (err) { console.error(err); }
   };
 
   // My location
@@ -406,12 +407,12 @@ export default function GlobalMeetingMap() {
   const toggleSharing = () => {
     if (sharing) {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
-      deleteDoc(doc(db, 'liveLocations', currentUser.uid)).catch(() => {});
+      deleteDoc(doc(db, COL.liveLocations, currentUser.uid)).catch(() => {});
       setSharing(false);
     } else {
       const wid = navigator.geolocation.watchPosition(
         pos => {
-          setDoc(doc(db, 'liveLocations', currentUser.uid), {
+          setDoc(doc(db, COL.liveLocations, currentUser.uid), {
             uid: currentUser.uid, email: myEmail,
             displayName: currentUser.displayName || '',
             lat: pos.coords.latitude, lng: pos.coords.longitude,
