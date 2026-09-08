@@ -13,7 +13,8 @@ const firebaseConfig = {
   measurementId: "G-YXTWQZD7BP",
 };
 
-const app = initializeApp(firebaseConfig);
+// app 은 lib/notifications.js 가 getMessaging(app) 에 쓴다.
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);

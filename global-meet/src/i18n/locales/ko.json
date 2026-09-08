@@ -63,7 +63,8 @@
     "subtitle": "받는 메시지가 내 언어로 자동 번역됩니다",
     "translating": "번역 중...",
     "listen": "원문 듣기",
-    "copy": "복사"
+    "copy": "복사",
+    "photoMessage": "📷 사진"
   },
   "common": {
     "cancel": "취소",
@@ -74,6 +75,21 @@
     "preferredLanguage": "선호 언어",
     "myLanguage": "내 언어",
     "myLanguageHelp": "받는 대화 메시지가 이 언어로 번역됩니다.",
-    "languageSaveFailed": "언어 설정을 저장하지 못했습니다."
+    "languageSaveFailed": "언어 설정을 저장하지 못했습니다.",
+    "installApp": "앱으로 설치",
+    "installHelp": "홈 화면에 추가하면 앱처럼 전체 화면으로 실행됩니다.",
+    "installNow": "설치하기",
+    "installIos": "Safari 하단의 공유 버튼 → \"홈 화면에 추가\" 를 눌러 설치하세요. iPhone 은 설치해야 알림을 받을 수 있습니다.",
+    "installManual": "브라우저 메뉴의 \"홈 화면에 추가\" 또는 \"앱 설치\" 를 눌러 설치하세요.",
+    "pushTitle": "새 대화 알림",
+    "pushOn": "참여 중인 대화방에 새 메시지가 오면 알려드립니다. 이미 읽은 대화는 알림이 오지 않습니다.",
+    "pushOff": "알림을 받지 않습니다.",
+    "pushOsHint": "휴대폰 설정에서 이 사이트의 알림을 끄면 여기서도 받지 않습니다.",
+    "pushUnsupported": "이 브라우저는 알림을 지원하지 않습니다.",
+    "pushIosInstall": "iPhone/iPad 는 홈 화면에 설치한 뒤에만 알림을 받을 수 있습니다.",
+    "pushDenied": "기기에서 알림이 차단되어 있습니다. 휴대폰 설정에서 이 사이트의 알림을 허용해 주세요.",
+    "pushNoKey": "알림 키가 아직 설정되지 않았습니다. 관리자 설정이 필요합니다.",
+    "pushNoToken": "알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "pushFailed": "알림을 켜지 못했습니다."
   }
 }

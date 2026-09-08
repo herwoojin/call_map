@@ -6,6 +6,7 @@ import { COL, STORAGE } from '../lib/collections';
 import { DEFAULT_LANGUAGE, languageFlag, languageLabel, isRtl, speechTag } from '../lib/languages';
 import { translateText, playTTS } from '../lib/translate';
 import { pronunciationFor } from '../lib/phonetics';
+import { notifyRoomMembers, clearRoomNotifications, onForegroundMessage } from '../lib/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Send, Plus, Trash2, LogOut, Users, Mic, MicOff, Volume2, VolumeX, Image as ImageIcon, X, Download, Loader2, Copy, Check, Languages } from 'lucide-react';
@@ -41,6 +42,11 @@ export default function GlobalChat() {
   const ttsRef = useRef(null);
   const translatingRef = useRef(new Set()); // 번역 진행 중인 메시지
   const failedRef = useRef(new Map());      // 메시지별 실패 횟수 (재시도 상한용)
+
+  // 포그라운드 알림 리스너는 한 번만 등록하므로, 콜백 안에서 최신 방 id 를
+  // 보려면 ref 가 필요하다. state 를 직접 읽으면 등록 시점 값에 묶인다.
+  const selectedRoomIdRef = useRef(null);
+  useEffect(() => { selectedRoomIdRef.current = selectedRoom?.id || null; }, [selectedRoom?.id]);
 
   // TTS — 원문을 그 언어 그대로 읽어준다 (PRD 4.5 F-CHAT-04).
   // 200자 제한이 있어 lib/translate.js 가 문장 단위로 잘라 순차 재생한다.
@@ -163,6 +169,40 @@ export default function GlobalChat() {
   // 방을 바꾸면 실패 기록을 비워 다시 시도할 수 있게 한다
   useEffect(() => { failedRef.current.clear(); }, [selectedRoom?.id, myLanguage]);
 
+  // 대화방을 열면 = 그 대화를 확인했다는 뜻.
+  // 잠금화면에 남아 있는 그 방의 알림을 지운다. (PRD 4.10 F-NOTI-02 3번 방어선)
+  useEffect(() => {
+    if (selectedRoom?.id) clearRoomNotifications(selectedRoom.id);
+  }, [selectedRoom?.id, messages.length]);
+
+  // 앱이 화면에 떠 있을 때 도착한 푸시.
+  // 지금 보고 있는 방이면 굳이 알림을 띄우지 않는다 — 이미 눈으로 보고 있다.
+  useEffect(() => {
+    let unsub = null;
+    let cancelled = false;
+
+    onForegroundMessage((payload) => {
+      const data = payload?.data || {};
+      if (!data.roomId || data.roomId === selectedRoomIdRef.current) return;
+
+      navigator.serviceWorker?.ready?.then((registration) => {
+        registration.showNotification(data.title || '새 메시지', {
+          body: data.body || '',
+          icon: '/pwa-192x192.png',
+          badge: '/pwa-192x192.png',
+          tag: data.tag || `chat-${data.roomId}`,
+          renotify: true,
+          data: { url: data.url || '/', roomId: data.roomId },
+        });
+      }).catch(() => {});
+    }).then((fn) => {
+      if (cancelled) { fn?.(); return; }
+      unsub = fn;
+    });
+
+    return () => { cancelled = true; unsub?.(); };
+  }, []);
+
   // 언마운트 시 재생 중이던 음성 정리
   useEffect(() => () => { try { ttsRef.current?.pause(); } catch { /* noop */ } }, []);
 
@@ -180,6 +220,17 @@ export default function GlobalChat() {
         text: msgText, senderEmail: myEmail,
         senderName: currentUser.displayName || '', sourceLanguage: myLanguage,
         timestamp: serverTimestamp(), readBy: [myEmail],
+      });
+
+      // 방 멤버(나 제외)에게 푸시. 이 시점엔 아무도 안 읽었으므로
+      // "내가 보지 못한 새 대화"에만 알림이 가는 것이 자연스럽게 성립한다.
+      notifyRoomMembers({
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name,
+        senderName: currentUser.displayName || myEmail,
+        senderEmail: myEmail,
+        text: msgText,
+        recipients: selectedRoom.members || [],
       });
     } catch (err) { console.error(err); }
   };
@@ -253,6 +304,15 @@ export default function GlobalChat() {
         text: '', imageUrl: url, imagePath: storagePath, imageWidth: width, imageHeight: height,
         senderEmail: myEmail, senderName: currentUser.displayName || '',
         sourceLanguage: myLanguage, timestamp: serverTimestamp(), readBy: [myEmail],
+      });
+
+      notifyRoomMembers({
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name,
+        senderName: currentUser.displayName || myEmail,
+        senderEmail: myEmail,
+        text: t('chat.photoMessage', '📷 사진'),
+        recipients: selectedRoom.members || [],
       });
     } catch (err) { console.error(err); }
     finally { setUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }

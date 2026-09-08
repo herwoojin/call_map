@@ -63,7 +63,8 @@
     "subtitle": "Incoming messages are auto-translated into your language",
     "translating": "Translating...",
     "listen": "Listen to original",
-    "copy": "Copy"
+    "copy": "Copy",
+    "photoMessage": "📷 Photo"
   },
   "common": {
     "cancel": "Cancel",
@@ -74,6 +75,21 @@
     "preferredLanguage": "Preferred language",
     "myLanguage": "My language",
     "myLanguageHelp": "Incoming chat messages are translated into this language.",
-    "languageSaveFailed": "Could not save your language setting."
+    "languageSaveFailed": "Could not save your language setting.",
+    "installApp": "Install as app",
+    "installHelp": "Add it to your home screen to run it full screen like an app.",
+    "installNow": "Install",
+    "installIos": "Tap the Share button in Safari, then \"Add to Home Screen\". On iPhone, notifications only work once installed.",
+    "installManual": "Use your browser menu and choose \"Add to Home screen\" or \"Install app\".",
+    "pushTitle": "New message alerts",
+    "pushOn": "You will be alerted when a new message arrives in a room you are in. Messages you have already read do not alert you again.",
+    "pushOff": "You will not receive alerts.",
+    "pushOsHint": "Turning off notifications for this site in your phone settings also stops them here.",
+    "pushUnsupported": "This browser does not support notifications.",
+    "pushIosInstall": "On iPhone/iPad, notifications work only after installing to the home screen.",
+    "pushDenied": "Notifications are blocked on this device. Allow them for this site in your phone settings.",
+    "pushNoKey": "The notification key is not configured yet. An administrator needs to set it up.",
+    "pushNoToken": "Could not register for notifications. Please try again shortly.",
+    "pushFailed": "Could not turn on notifications."
   }
 }

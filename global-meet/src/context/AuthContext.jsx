@@ -50,6 +50,9 @@ export function AuthProvider({ children }) {
         if (!snap.exists()) {
           await setDoc(userRef, {
             email: user.email || '',
+            // 알림 발송 함수가 이 필드로 수신자를 찾는다. 대화방 members 가
+            // 소문자 이메일이라 대소문자 섞인 email 로는 매칭이 어긋난다.
+            emailLower: (user.email || '').toLowerCase(),
             displayName: user.displayName || '',
             photoURL: user.photoURL || '',
             preferredLanguage: DEFAULT_LANGUAGE,
@@ -58,9 +61,12 @@ export function AuthProvider({ children }) {
             emailSanitized: (user.email || '').replace(/\./g, '_'),
           });
         } else {
+          // emailLower 는 나중에 추가된 필드다. 기존 사용자도 다음 접속 때
+          // 자동으로 채워지도록 여기서 함께 갱신한다.
           setDoc(userRef, {
             lastSeen: new Date().toISOString(),
             photoURL: user.photoURL || '',
+            emailLower: (user.email || '').toLowerCase(),
           }, { merge: true }).catch(() => {});
         }
       } catch (err) {

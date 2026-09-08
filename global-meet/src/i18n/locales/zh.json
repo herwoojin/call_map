@@ -63,7 +63,8 @@
     "subtitle": "收到的消息会自动翻译成你的语言",
     "translating": "翻译中...",
     "listen": "收听原文",
-    "copy": "复制"
+    "copy": "复制",
+    "photoMessage": "📷 照片"
   },
   "common": {
     "cancel": "取消",
@@ -74,6 +75,21 @@
     "preferredLanguage": "首选语言",
     "myLanguage": "我的语言",
     "myLanguageHelp": "收到的聊天消息将翻译成此语言。",
-    "languageSaveFailed": "无法保存语言设置。"
+    "languageSaveFailed": "无法保存语言设置。",
+    "installApp": "安装为应用",
+    "installHelp": "添加到主屏幕后可像应用一样全屏运行。",
+    "installNow": "安装",
+    "installIos": "点击 Safari 下方的分享按钮，选择\"添加到主屏幕\"。iPhone 需先安装才能接收通知。",
+    "installManual": "在浏览器菜单中选择\"添加到主屏幕\"或\"安装应用\"。",
+    "pushTitle": "新消息通知",
+    "pushOn": "你参与的聊天室有新消息时会通知你。已读的消息不会重复通知。",
+    "pushOff": "不接收通知。",
+    "pushOsHint": "在手机设置中关闭本站通知后，这里也不会收到。",
+    "pushUnsupported": "此浏览器不支持通知。",
+    "pushIosInstall": "iPhone/iPad 需先安装到主屏幕才能接收通知。",
+    "pushDenied": "此设备已阻止通知。请在手机设置中允许本站通知。",
+    "pushNoKey": "尚未配置通知密钥，需要管理员设置。",
+    "pushNoToken": "通知注册失败，请稍后重试。",
+    "pushFailed": "无法开启通知。"
   }
 }

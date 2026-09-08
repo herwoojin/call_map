@@ -6,11 +6,15 @@ import { db, auth } from '../lib/firebase';
 import { COL } from '../lib/collections';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff, Languages } from 'lucide-react';
+import { ArrowLeft, User, Mail, Shield, LogOut, Check, Edit2, X, Eye, EyeOff, Languages, Bell, BellOff, Smartphone, Loader2 } from 'lucide-react';
 import { LANGUAGES, languageLabel } from '../lib/languages';
+import {
+  enablePush, disablePush, permissionState, isDeviceRegistered,
+  isPushSupported, isIos, isStandalone, hasVapidKey,
+} from '../lib/notifications';
 
 export default function Settings() {
-  const { currentUser, logout, myLanguage, updateUserProfile } = useAuth();
+  const { currentUser, logout, myLanguage, updateUserProfile, userProfile } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
@@ -19,6 +23,53 @@ export default function Settings() {
   const [loading, setLoading] = useState(false);
   const [discoverable, setDiscoverable] = useState(true);
   const [savingLang, setSavingLang] = useState(false);
+
+  // ── 알림
+  const [pushPermission, setPushPermission] = useState(() => permissionState());
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNote, setPushNote] = useState('');
+  const pushOn = pushPermission === 'granted' && isDeviceRegistered(userProfile);
+
+  // ── 홈 화면 설치 (안드로이드/데스크톱 크롬). iOS 는 아래 수동 안내로 처리.
+  const [installPrompt, setInstallPrompt] = useState(null);
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt);
+  }, []);
+
+  const pushFailureMessage = (reason) => ({
+    unsupported: t('settings.pushUnsupported', '이 브라우저는 알림을 지원하지 않습니다.'),
+    'ios-needs-install': t('settings.pushIosInstall', 'iPhone/iPad 는 홈 화면에 설치한 뒤에만 알림을 받을 수 있습니다.'),
+    denied: t('settings.pushDenied', '기기에서 알림이 차단되어 있습니다. 휴대폰 설정에서 이 사이트의 알림을 허용해 주세요.'),
+    'no-vapid-key': t('settings.pushNoKey', '알림 키가 아직 설정되지 않았습니다. 관리자 설정이 필요합니다.'),
+    'no-token': t('settings.pushNoToken', '알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+    'token-error': t('settings.pushNoToken', '알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'),
+  }[reason] || t('settings.pushFailed', '알림을 켜지 못했습니다.'));
+
+  const handleTogglePush = async () => {
+    if (!currentUser?.uid) return;
+    setPushBusy(true);
+    setPushNote('');
+    try {
+      if (pushOn) {
+        await disablePush(currentUser.uid);
+      } else {
+        const result = await enablePush(currentUser.uid);
+        if (!result.ok) setPushNote(pushFailureMessage(result.reason));
+      }
+      setPushPermission(permissionState());
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice.catch(() => {});
+    setInstallPrompt(null);
+  };
 
   // 채팅 번역 타깃 언어. 저장하면 AuthContext 구독이 즉시 반영한다.
   const handleLanguageChange = async (code) => {
@@ -210,6 +261,71 @@ export default function Settings() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* 홈 화면에 앱으로 설치 — 이미 설치해서 실행 중이면 숨긴다 */}
+              {!isStandalone() && (
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-start gap-4">
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-800 font-medium">{t('settings.installApp', '앱으로 설치')}</p>
+                    {installPrompt ? (
+                      <>
+                        <p className="text-xs text-slate-500 mb-2">
+                          {t('settings.installHelp', '홈 화면에 추가하면 앱처럼 전체 화면으로 실행됩니다.')}
+                        </p>
+                        <button onClick={handleInstall}
+                          className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">
+                          {t('settings.installNow', '설치하기')}
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-slate-500">
+                        {isIos()
+                          ? t('settings.installIos', 'Safari 하단의 공유 버튼 → "홈 화면에 추가" 를 눌러 설치하세요. iPhone 은 설치해야 알림을 받을 수 있습니다.')
+                          : t('settings.installManual', '브라우저 메뉴의 "홈 화면에 추가" 또는 "앱 설치" 를 눌러 설치하세요.')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 새 대화 알림 */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${pushOn ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-500'}`}>
+                    {pushOn ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-slate-800 font-medium">{t('settings.pushTitle', '새 대화 알림')}</p>
+                    <p className="text-xs text-slate-500">
+                      {pushOn
+                        ? t('settings.pushOn', '참여 중인 대화방에 새 메시지가 오면 알려드립니다. 이미 읽은 대화는 알림이 오지 않습니다.')
+                        : t('settings.pushOff', '알림을 받지 않습니다.')}
+                    </p>
+                    {pushNote && <p className="text-xs text-red-500 mt-1.5">{pushNote}</p>}
+                    {pushOn && (
+                      <p className="text-[11px] text-slate-400 mt-1.5">
+                        {t('settings.pushOsHint', '휴대폰 설정에서 이 사이트의 알림을 끄면 여기서도 받지 않습니다.')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleTogglePush}
+                  disabled={pushBusy || !isPushSupported() || !hasVapidKey()}
+                  role="switch"
+                  aria-checked={pushOn}
+                  aria-label={t('settings.pushTitle', '새 대화 알림')}
+                  className={`relative w-12 h-7 rounded-full transition-colors flex-shrink-0 disabled:opacity-40 ${pushOn ? 'bg-amber-500' : 'bg-slate-300'}`}
+                >
+                  <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all flex items-center justify-center ${pushOn ? 'left-6' : 'left-1'}`}>
+                    {pushBusy && <Loader2 className="w-3 h-3 animate-spin text-slate-400" />}
+                  </span>
+                </button>
               </div>
 
               {/* Discoverability Toggle */}

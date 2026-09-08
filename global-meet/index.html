@@ -9,10 +9,47 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>연결.잇다. — GlobalMeet</title>
+
+    <!-- PWA: 홈 화면에 설치했을 때 앱처럼 뜨게 하는 설정 -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="연결.잇다" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- 링크 공유 카드 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="연결.잇다. — JINI+US" />
+    <meta property="og:description" content="지도에 핀을 남기고, 어떤 언어를 쓰든 함께 대화하세요." />
+    <meta property="og:image" content="/pwa-512x512.png" />
+
     <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!--
+      서비스 워커 등록.
+      /sw.js 하나만 남기고 예전 세대의 SW 는 전부 정리한다. 여러 SW 가 공존하면
+      캐시가 충돌하고 알림이 중복으로 뜬다.
+    -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(function () { return navigator.serviceWorker.getRegistrations(); })
+            .then(function (regs) {
+              (regs || []).forEach(function (r) {
+                var url = (r.active && r.active.scriptURL) || '';
+                if (url && url.indexOf('/sw.js') === -1) r.unregister();
+              });
+            })
+            .catch(function (err) { console.warn('[PWA] SW 등록 실패:', err); });
+        });
+      }
+    </script>
   </body>
 </html>
