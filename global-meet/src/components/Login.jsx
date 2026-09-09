@@ -30,7 +30,7 @@ export default function Login() {
             <Globe className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            연결<span className="text-indigo-400">.</span>잇다<span className="text-indigo-400">.</span>
+            글로벌 <span className="text-indigo-400">CVS Board</span>
           </h1>
           <p className="text-slate-400 text-lg">
             {t('login.subtitle', 'Connect, Share, Meet — 전 세계 어디서나')}
